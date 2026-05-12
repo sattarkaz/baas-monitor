@@ -1024,12 +1024,12 @@ async function loadData(){
   if(!sbOn()) return; // no Supabase config → keep in-memory defaults
   showSyncBadge('Yüklənir…','#f57c00');
   try{
-    const [partners,pkgs,users,docs,fps]=await Promise.all([
+    // Core tables — must succeed
+    const [partners,pkgs,users,docs]=await Promise.all([
       sb('GET','partners',null,'?order=id'),
       sb('GET','packages',null,'?order=id'),
       sb('GET','sys_users',null,'?order=id'),
       sb('GET','partner_docs',null,'?order=id'),
-      sb('GET','fee_packages',null,'?order=id'),
     ]);
     if(partners?.length) PARTNERS=partners.map(partnerFromDb);
     if(pkgs?.length)     PACKAGES=pkgs.map(pkgFromDb);
@@ -1042,20 +1042,48 @@ async function loadData(){
       if(!PARTNER_DOCS[pid]) PARTNER_DOCS[pid]=[];
       PARTNER_DOCS[pid].push(docFromDb(d));
     });
+
+    // fee_packages — optional: table may not exist yet (migration v2 not run)
+    let fps=[];
+    try{
+      fps=await sb('GET','fee_packages',null,'?order=id')||[];
+    }catch(e){
+      // Table missing — show one-time banner, keep in-memory defaults
+      console.warn('fee_packages not found:',e.message);
+      showMigrationBanner();
+    }
     // Rebuild FEE_PACKAGES keyed by partner id
     FEE_PACKAGES={};
     PARTNERS.forEach(p=>FEE_PACKAGES[p.id]=[]);
-    (fps||[]).forEach(fp=>{
+    fps.forEach(fp=>{
       const pid=Number(fp.partner_id);
       if(!FEE_PACKAGES[pid]) FEE_PACKAGES[pid]=[];
       FEE_PACKAGES[pid].push(feePackageFromDb(fp));
     });
+
     showSyncBadge('Sinxronizasiya: OK','#2e7d32');
   }catch(e){
     showSyncBadge('DB xətası','#e53935');
     showToast('Supabase yükləmə xətası: '+e.message,false);
     console.error(e);
   }
+}
+
+function showMigrationBanner(){
+  // Show a sticky notice at the top of the app once
+  if(document.getElementById('migrationBanner')) return;
+  const div=document.createElement('div');
+  div.id='migrationBanner';
+  div.style.cssText='position:fixed;top:58px;left:240px;right:0;z-index:90;background:#fff3e0;border-bottom:2px solid #f57c00;padding:10px 22px;font-size:12px;color:#bf360c;display:flex;align-items:center;gap:10px';
+  div.innerHTML=`<i class="fa-solid fa-triangle-exclamation" style="font-size:16px"></i>
+    <div><strong>Miqrasiya tələb olunur:</strong>
+      Komisyon paketləri üçün <code>supabase_migration_v2.sql</code> faylını
+      Supabase SQL Editor-da icra edin — <em>fee_packages</em> cədvəli yaradılacaq.
+      Hazır olduqda səhifəni yeniləyin.
+    </div>
+    <button onclick="document.getElementById('migrationBanner').remove()"
+      style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:#bf360c;padding:2px 6px">&times;</button>`;
+  document.body.appendChild(div);
 }
 
 function showSyncBadge(text,color){
