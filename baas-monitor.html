@@ -185,6 +185,16 @@ td.r{text-align:right}td.mono{font-family:monospace;font-size:11px}
 /* USER STATUS */
 .b-blocked{background:#eceff1;color:#546e7a}
 
+/* FEE PACKAGES */
+.fp-card{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:10px;border-left:3px solid #1565c0}
+.fp-card-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.fp-name{font-size:13px;font-weight:700;color:#1a2332}.fp-period{font-size:10px;color:#94a3b8;margin-top:2px}
+.tiers-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+.tiers-tbl th{padding:5px 8px;text-align:left;font-size:10px;color:#64748b;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.tiers-tbl td{padding:6px 8px;border-bottom:1px solid #f1f5f9}.tiers-tbl tr:last-child td{border-bottom:none}
+.tier-inp{border:1.5px solid #e2e8f0;border-radius:6px;padding:4px 7px;font-size:12px;width:100%;font-family:inherit;outline:none;background:#fff}
+.tier-inp:focus{border-color:#009688;box-shadow:0 0 0 2px rgba(0,150,136,.1)}
+
 /* DWH NOTE */
 .dwh-note{background:#e0f2f1;border-radius:10px;padding:14px 18px;font-size:12px;color:#004d40;margin-bottom:20px;line-height:1.7}
 code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
@@ -681,6 +691,68 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
   </div>
 </div>
 
+<!-- ══════════════════════════════ MODAL: Fee Package Form -->
+<div class="modal-bg" id="feePackageFormModal" onclick="if(event.target===this)closeModal('feePackageFormModal')">
+  <div class="modal" style="width:680px">
+    <div class="modal-hdr">
+      <h2 id="fpFormTitle"><i class="fa-solid fa-percent" style="color:#1565c0"></i> Yeni Komisyon Paketi</h2>
+      <button class="modal-close" onclick="closeModal('feePackageFormModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="fpf_id">
+      <input type="hidden" id="fpf_pid">
+      <div class="form-section">Əsas Məlumat</div>
+      <div class="form-grid form-grid-2">
+        <div class="form-field" style="grid-column:1/-1">
+          <label>Paket Adı <span class="req">*</span></label>
+          <input type="text" id="fpf_name" placeholder="məs. Standart Tarif 2025">
+        </div>
+        <div class="form-field">
+          <label>Status</label>
+          <select id="fpf_status">
+            <option value="active">Aktiv</option>
+            <option value="inactive">Qeyri-aktiv</option>
+          </select>
+        </div>
+        <div class="form-field"><!-- spacer --></div>
+        <div class="form-field">
+          <label>Qüvvəyə minmə tarixi</label>
+          <input type="date" id="fpf_from">
+        </div>
+        <div class="form-field">
+          <label>Bitmə tarixi</label>
+          <input type="date" id="fpf_to">
+        </div>
+      </div>
+      <div class="form-section" style="margin-top:18px">Komisyon Cədvəli (Tier-lər)</div>
+      <div style="font-size:11px;color:#64748b;margin-bottom:10px">
+        <i class="fa-solid fa-circle-info"></i>
+        Sonuncu sıranın "Həddə qədər" xanasını boş buraxın — limitsiz hesab ediləcək.
+      </div>
+      <table class="tiers-tbl" style="margin-bottom:10px">
+        <thead>
+          <tr>
+            <th style="min-width:130px">Başlanğıc (₼)</th>
+            <th style="min-width:130px">Həddə qədər (₼)</th>
+            <th style="min-width:110px">Komisyon (%)</th>
+            <th style="width:40px"></th>
+          </tr>
+        </thead>
+        <tbody id="fpTiersBody"></tbody>
+      </table>
+      <button class="btn btn-outline btn-sm" onclick="addFpTierRow()">
+        <i class="fa-solid fa-plus"></i> Sıra əlavə et
+      </button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('feePackageFormModal')">Ləğv et</button>
+      <button class="btn btn-success" onclick="saveFeePackage()">
+        <i class="fa-solid fa-floppy-disk"></i> Yadda saxla
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════ TOAST -->
 <div id="toast" style="position:fixed;bottom:24px;right:24px;z-index:999;display:none">
   <div style="background:#1a2332;color:#fff;padding:12px 18px;border-radius:10px;
@@ -758,6 +830,19 @@ let PARTNER_DOCS = {
   6:[],
 };
 
+// Fee / commission packages — keyed by partner id
+let _nextFpId = 5;
+let FEE_PACKAGES = {
+  1:[{id:1,partner_id:1,name:'AzərTech — 2024-2025 Komisyon Paketi',status:'active',effective_from:'2024-01-01',effective_to:'2025-12-31',
+    tiers:[{from:0,to:500000,rate:0.5},{from:500001,to:1000000,rate:0.35},{from:1000001,to:null,rate:0.2}]}],
+  2:[{id:2,partner_id:2,name:'FinTex Standart Tarif 2024',status:'active',effective_from:'2024-06-01',effective_to:'2025-05-31',
+    tiers:[{from:0,to:300000,rate:0.6},{from:300001,to:700000,rate:0.4},{from:700001,to:null,rate:0.25}]}],
+  3:[],4:[{id:3,partner_id:4,name:'MarketYer Premium Tarif',status:'active',effective_from:'2024-09-01',effective_to:'2025-08-31',
+    tiers:[{from:0,to:1000000,rate:0.45},{from:1000001,to:null,rate:0.28}]}],
+  5:[],6:[{id:4,partner_id:6,name:'RəqəmsalBank VIP Tarif 2025',status:'active',effective_from:'2025-01-01',effective_to:'2025-12-31',
+    tiers:[{from:0,to:200000,rate:0.55},{from:200001,to:500000,rate:0.38},{from:500001,to:1000000,rate:0.25},{from:1000001,to:null,rate:0.15}]}],
+};
+
 let PACKAGES = [
   {id:1,  pid:1, size:10000, from:'2024-01-01', to:'2024-12-31', status:'active',    issued:9245,  rem:755,  pct:92.45, notes:'Əsas paket 2024'},
   {id:2,  pid:1, size: 5000, from:'2025-01-01', to:'2025-12-31', status:'active',    issued:1832,  rem:3168, pct:36.64, notes:'Genişlənmə 2025'},
@@ -816,8 +901,8 @@ const COUNTRY_DATA = [
 // ═══════════════════════ SUPABASE CONFIG
 // ▶ supabase.com-da hesab açın → Yeni layihə → Settings → API
 // ▶ Aşağıdakı iki dəyəri öz layihənizin məlumatları ilə əvəz edin:
-const SUPABASE_URL = 'https://icakohbufchlabkiupme.supabase.co';   // məs: 'https://xyzabc.supabase.co'
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljYWtvaGJ1ZmNobGFia2l1cG1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1Nzg1OTUsImV4cCI6MjA5NDE1NDU5NX0.mzDEo117hBkPp9rx-sHXquBASNci8VZ7JzMpsME8NOI';   // anon / public key
+const SUPABASE_URL = 'https://icakohbufchlabkiupme.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljYWtvaGJ1ZmNobGFia2l1cG1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1Nzg1OTUsImV4cCI6MjA5NDE1NDU5NX0.mzDEo117hBkPp9rx-sHXquBASNci8VZ7JzMpsME8NOI';
 
 const sbOn = ()=> SUPABASE_URL && SUPABASE_KEY;
 
@@ -857,7 +942,12 @@ function userFromDb(r){
   return{id:Number(r.id),login:r.login,name:r.name,email:r.email||'',role:r.role,status:r.status};
 }
 function docFromDb(r){
-  return{id:Number(r.id),name:r.name,size:r.size||0,mime:r.mime||'',date:r.date||'',note:r.note||''};
+  return{id:Number(r.id),name:r.name,size:r.size||0,mime:r.mime||'',date:r.date||'',note:r.note||'',storage_path:r.storage_path||''};
+}
+function feePackageFromDb(r){
+  return{id:Number(r.id),partner_id:Number(r.partner_id),name:r.name||'',status:r.status||'active',
+    effective_from:r.effective_from||'',effective_to:r.effective_to||'',
+    tiers:Array.isArray(r.tiers)?r.tiers:(typeof r.tiers==='string'?JSON.parse(r.tiers):[])};
 }
 
 // ── Load all data from Supabase ──
@@ -865,11 +955,12 @@ async function loadData(){
   if(!sbOn()) return; // no Supabase config → keep in-memory defaults
   showSyncBadge('Yüklənir…','#f57c00');
   try{
-    const [partners,pkgs,users,docs]=await Promise.all([
+    const [partners,pkgs,users,docs,fps]=await Promise.all([
       sb('GET','partners',null,'?order=id'),
       sb('GET','packages',null,'?order=id'),
       sb('GET','sys_users',null,'?order=id'),
       sb('GET','partner_docs',null,'?order=id'),
+      sb('GET','fee_packages',null,'?order=id'),
     ]);
     if(partners?.length) PARTNERS=partners.map(partnerFromDb);
     if(pkgs?.length)     PACKAGES=pkgs.map(pkgFromDb);
@@ -882,6 +973,14 @@ async function loadData(){
       if(!PARTNER_DOCS[pid]) PARTNER_DOCS[pid]=[];
       PARTNER_DOCS[pid].push(docFromDb(d));
     });
+    // Rebuild FEE_PACKAGES keyed by partner id
+    FEE_PACKAGES={};
+    PARTNERS.forEach(p=>FEE_PACKAGES[p.id]=[]);
+    (fps||[]).forEach(fp=>{
+      const pid=Number(fp.partner_id);
+      if(!FEE_PACKAGES[pid]) FEE_PACKAGES[pid]=[];
+      FEE_PACKAGES[pid].push(feePackageFromDb(fp));
+    });
     showSyncBadge('Sinxronizasiya: OK','#2e7d32');
   }catch(e){
     showSyncBadge('DB xətası','#e53935');
@@ -893,6 +992,24 @@ async function loadData(){
 function showSyncBadge(text,color){
   const el=document.getElementById('syncBadge');
   if(el){el.textContent=text;el.style.color=color;}
+}
+
+// ── Supabase Storage helpers ──
+async function uploadFileToStorage(pid, file){
+  if(!sbOn()) return '';
+  const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const path=`partner-${pid}/${Date.now()}_${safeName}`;
+  const url=`${SUPABASE_URL}/storage/v1/object/partner-docs/${path}`;
+  const res=await fetch(url,{method:'POST',headers:{
+    'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,
+    'Content-Type':file.type||'application/octet-stream',
+  },body:file});
+  if(!res.ok){const t=await res.text();throw new Error(t);}
+  return path;
+}
+function getStorageUrl(storage_path){
+  if(!storage_path||!sbOn()) return null;
+  return`${SUPABASE_URL}/storage/v1/object/public/partner-docs/${storage_path}`;
 }
 
 // ── Reset to seed data (deletes and re-inserts via SQL — user does this in Supabase dashboard) ──
@@ -1359,18 +1476,42 @@ function openDetailModal(pid){
   </tr>`).join('');
 
   const docs=PARTNER_DOCS[pid]||[];
-  const docList=docs.length
-    ? docs.map(d=>`<div class="doc-item">
-        <div class="doc-icon">${fileIcon(d.mime)}</div>
-        <div class="doc-info">
-          <div class="doc-name">${d.name}</div>
-          <div class="doc-meta">${fmtBytes(d.size)} · ${d.date}${d.note?' · '+d.note:''}</div>
+  const fps=FEE_PACKAGES[pid]||[];
+  const feeSection=`
+    <div style="font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.5px;margin:18px 0 8px">
+      <i class="fa-solid fa-percent" style="color:#1565c0"></i> Komisyon &amp; Limit Paketləri
+      <span style="font-weight:400;color:#94a3b8;font-size:10px;text-transform:none;margin-left:6px">(${fps.length} paket)</span>
+    </div>
+    ${fps.length?fps.map(fp=>{
+      const tiers=fp.tiers||[];
+      return`<div class="fp-card">
+        <div class="fp-card-hdr">
+          <div>
+            <div class="fp-name">${fp.name}</div>
+            <div class="fp-period">${fp.effective_from?fmtDate(fp.effective_from)+' – '+fmtDate(fp.effective_to):'Müddətsiz'}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${fp.status==='active'?'<span class="badge b-active">Aktiv</span>':'<span class="badge b-inactive">Qeyri-aktiv</span>'}
+            <button class="btn btn-warning btn-sm" onclick="openFeePackageForm(${fp.id},${pid})">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="deleteFeePackage(${fp.id},${pid})">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
         </div>
-        <button class="btn btn-danger btn-sm" onclick="deleteDoc(${d.id},${pid})" title="Sil">
-          <i class="fa-solid fa-trash"></i>
-        </button>
-      </div>`).join('')
-    : `<div style="color:#94a3b8;font-size:12px;padding:8px 0">Hələ sənəd əlavə edilməyib.</div>`;
+        <table class="tiers-tbl">
+          <thead><tr><th>Həcm aralığı (₼)</th><th>Komisyon dərəcəsi</th></tr></thead>
+          <tbody>${tiers.map((t,i)=>`<tr>
+            <td>${fmtN(t.from)} ₼ — ${t.to===null||t.to===undefined?'Limitsiz':fmtN(t.to)+' ₼'}</td>
+            <td><strong style="color:#1565c0">${t.rate}%</strong></td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>`;
+    }).join(''):`<div style="color:#94a3b8;font-size:12px;padding:8px 0">Hələ komisyon paketi əlavə edilməyib.</div>`}
+    <button class="btn btn-outline btn-sm" style="margin-top:4px" onclick="openFeePackageForm(null,${pid})">
+      <i class="fa-solid fa-plus" style="color:#1565c0"></i> Komisyon Paketi Əlavə et
+    </button>`;
 
   const canExport = currentRole==='administrator'||currentRole==='manager'||currentRole==='analyst';
   const exportSection = canExport ? `
@@ -1452,13 +1593,14 @@ function openDetailModal(pid){
         <div><span style="color:#94a3b8">Ort. məbləğ:</span> <strong>${s.cnt>0?fmtMoney(s.vol/s.cnt):'—'}</strong></div>
       </div>
     </div>
+    ${feeSection}
     ${exportSection}
     <!-- Documents -->
     <div style="font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.5px;margin:18px 0 8px">
       <i class="fa-solid fa-folder-open" style="color:#f57c00"></i> Yüklənmiş Sənədlər
       <span style="font-weight:400;color:#94a3b8;font-size:10px;text-transform:none;margin-left:6px">(${docs.length} fayl)</span>
     </div>
-    <div id="docList-${pid}">${docList}</div>
+    <div id="docList-${pid}">${renderDocList(docs,pid)}</div>
     <div class="upload-area" onclick="document.getElementById('docInput-${pid}').click()">
       <i class="fa-solid fa-cloud-arrow-up" style="font-size:22px;margin-bottom:6px;display:block"></i>
       Sənəd yükləmək üçün klikləyin<br>
@@ -1472,7 +1614,10 @@ function openDetailModal(pid){
       ${canEdit?`<button class="btn btn-warning" onclick="closeModal('partnerDetailModal');openPartnerForm(${pid})">
         <i class="fa-solid fa-pen"></i> Düzəliş et</button>`:''}
       <button class="btn btn-primary" onclick="closeModal('partnerDetailModal');openPackageForm(${pid})">
-        <i class="fa-solid fa-plus"></i> Paket Əlavə et
+        <i class="fa-solid fa-plus"></i> Kart Paketi
+      </button>
+      <button class="btn btn-outline" style="border-color:#1565c0;color:#1565c0" onclick="openFeePackageForm(null,${pid})">
+        <i class="fa-solid fa-percent"></i> Komisyon Paketi
       </button>
       <button class="btn btn-outline" onclick="goTxn(${pid})">
         <i class="fa-solid fa-chart-line"></i> Əməliyyatlar
@@ -1752,6 +1897,31 @@ async function toggleUserStatus(uid){
 }
 
 // ═══════════════════════ DOCUMENT HELPERS
+function renderDocList(docs, pid){
+  if(!docs||!docs.length) return`<div style="color:#94a3b8;font-size:12px;padding:8px 0">Hələ sənəd əlavə edilməyib.</div>`;
+  return docs.map(d=>{
+    const dlUrl=getStorageUrl(d.storage_path);
+    return`<div class="doc-item">
+      <div class="doc-icon">${fileIcon(d.mime)}</div>
+      <div class="doc-info">
+        <div class="doc-name">${d.name}</div>
+        <div class="doc-meta">${fmtBytes(d.size)} · ${d.date}${d.note?' · '+d.note:''}</div>
+      </div>
+      ${dlUrl?`<a href="${dlUrl}" target="_blank" download="${d.name}" class="btn btn-success btn-sm" title="Yüklə">
+        <i class="fa-solid fa-download"></i></a>`:
+        `<span class="btn btn-outline btn-sm" style="opacity:.4;cursor:not-allowed" title="Fayl storage-da deyil"><i class="fa-solid fa-download"></i></span>`}
+      <button class="btn btn-danger btn-sm" onclick="deleteDoc(${d.id},${pid})" title="Sil">
+        <i class="fa-solid fa-trash"></i>
+      </button>
+    </div>`;
+  }).join('');
+}
+function refreshDocList(pid){
+  const docs=PARTNER_DOCS[pid]||[];
+  const el=document.getElementById(`docList-${pid}`);
+  if(el) el.innerHTML=renderDocList(docs,pid);
+}
+
 function fileIcon(mime){
   if(!mime)return'📄';
   if(mime.includes('pdf'))return'📕';
@@ -1769,9 +1939,16 @@ async function handleDocUpload(event,pid){
   const files=Array.from(event.target.files);
   if(!files.length)return;
   const today=isoToday();
+  let uploaded=0;
   for(const f of files){
     if(f.size>10*1024*1024){showToast(`"${f.name}" 10MB-dan böyükdür, atlandı.`,false);continue;}
-    const docData={name:f.name,size:f.size,mime:f.type||'application/octet-stream',date:today,note:''};
+    // Upload binary to Supabase Storage
+    let storage_path='';
+    if(sbOn()){
+      try{storage_path=await uploadFileToStorage(pid,f);}
+      catch(e){showToast(`"${f.name}" storage xətası: ${e.message}. Metadata saxlanılır…`,false);}
+    }
+    const docData={name:f.name,size:f.size,mime:f.type||'application/octet-stream',date:today,note:'',storage_path};
     let newId;
     try{
       if(sbOn()){
@@ -1781,44 +1958,148 @@ async function handleDocUpload(event,pid){
     }catch(e){showToast('Sənəd saxlama xətası: '+e.message,false);continue;}
     if(!PARTNER_DOCS[pid]) PARTNER_DOCS[pid]=[];
     PARTNER_DOCS[pid].push({id:newId,...docData});
+    uploaded++;
   }
-  const docs=PARTNER_DOCS[pid]||[];
-  const docList=docs.map(d=>`<div class="doc-item">
-    <div class="doc-icon">${fileIcon(d.mime)}</div>
-    <div class="doc-info">
-      <div class="doc-name">${d.name}</div>
-      <div class="doc-meta">${fmtBytes(d.size)} · ${d.date}${d.note?' · '+d.note:''}</div>
-    </div>
-    <button class="btn btn-danger btn-sm" onclick="deleteDoc(${d.id},${pid})" title="Sil">
-      <i class="fa-solid fa-trash"></i>
-    </button>
-  </div>`).join('');
-  const listEl=document.getElementById(`docList-${pid}`);
-  if(listEl)listEl.innerHTML=docList||`<div style="color:#94a3b8;font-size:12px;padding:8px 0">Hələ sənəd əlavə edilməyib.</div>`;
+  refreshDocList(pid);
   event.target.value='';
-  showToast(`${files.length} sənəd əlavə edildi.`);
+  if(uploaded>0) showToast(`${uploaded} sənəd yükləndi.`);
 }
 
 async function deleteDoc(docId,pid){
   if(!PARTNER_DOCS[pid])return;
+  const doc=PARTNER_DOCS[pid].find(d=>d.id===docId);
   try{
-    if(sbOn()) await sb('DELETE','partner_docs',null,`?id=eq.${docId}`);
+    if(sbOn()){
+      // Remove binary from storage
+      if(doc?.storage_path){
+        try{await fetch(`${SUPABASE_URL}/storage/v1/object/partner-docs/${doc.storage_path}`,
+          {method:'DELETE',headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});}
+        catch(e){console.warn('Storage silmə xətası:',e);}
+      }
+      await sb('DELETE','partner_docs',null,`?id=eq.${docId}`);
+    }
   }catch(e){showToast('Silmə xətası: '+e.message,false);return;}
   PARTNER_DOCS[pid]=PARTNER_DOCS[pid].filter(d=>d.id!==docId);
-  const docs=PARTNER_DOCS[pid];
-  const docList=docs.map(d=>`<div class="doc-item">
-    <div class="doc-icon">${fileIcon(d.mime)}</div>
-    <div class="doc-info">
-      <div class="doc-name">${d.name}</div>
-      <div class="doc-meta">${fmtBytes(d.size)} · ${d.date}${d.note?' · '+d.note:''}</div>
-    </div>
-    <button class="btn btn-danger btn-sm" onclick="deleteDoc(${d.id},${pid})" title="Sil">
-      <i class="fa-solid fa-trash"></i>
-    </button>
-  </div>`).join('');
-  const listEl=document.getElementById(`docList-${pid}`);
-  if(listEl)listEl.innerHTML=docList||`<div style="color:#94a3b8;font-size:12px;padding:8px 0">Hələ sənəd əlavə edilməyib.</div>`;
+  refreshDocList(pid);
   showToast('Sənəd silindi.');
+}
+
+// ═══════════════════════ FEE PACKAGES CRUD
+let _fpCurrentPid = null;
+
+function openFeePackageForm(fpId=null, pid){
+  _fpCurrentPid = pid;
+  document.getElementById('fpf_pid').value = pid;
+  document.getElementById('fpf_id').value  = fpId||'';
+  const isEdit = fpId !== null;
+  document.getElementById('fpFormTitle').innerHTML =
+    `<i class="fa-solid fa-percent" style="color:#1565c0"></i> ${isEdit?'Komisyon Paketini Düzəlt':'Yeni Komisyon Paketi'}`;
+  const setV=(id,v)=>document.getElementById(id).value=v||'';
+  if(isEdit){
+    const fp=(FEE_PACKAGES[pid]||[]).find(x=>x.id===fpId);
+    if(!fp)return;
+    setV('fpf_name',fp.name); setV('fpf_status',fp.status);
+    setV('fpf_from',fp.effective_from); setV('fpf_to',fp.effective_to);
+    renderFpTiers(fp.tiers||[]);
+  }else{
+    ['fpf_name','fpf_from','fpf_to'].forEach(id=>setV(id,''));
+    setV('fpf_status','active');
+    renderFpTiers([{from:0,to:'',rate:''}]);
+  }
+  openModal('feePackageFormModal');
+}
+
+function renderFpTiers(tiers){
+  const tbody=document.getElementById('fpTiersBody');
+  tbody.innerHTML='';
+  tiers.forEach((t,i)=>addFpTierRow(t,i));
+}
+
+function addFpTierRow(t={},idx=null){
+  const tbody=document.getElementById('fpTiersBody');
+  const i=idx!==null?idx:tbody.rows.length;
+  const tr=document.createElement('tr');
+  const fromVal = t.from!==undefined&&t.from!==null ? t.from : '';
+  const toVal   = t.to!==undefined&&t.to!==null ? t.to : '';
+  const rateVal = t.rate!==undefined ? t.rate : '';
+  tr.innerHTML=`
+    <td><input class="tier-inp" type="number" min="0" step="1" value="${fromVal}"
+         id="tier_from_${i}" placeholder="0" oninput="updateNextTierFrom(${i})"></td>
+    <td><input class="tier-inp" type="number" min="0" step="1" value="${toVal}"
+         id="tier_to_${i}" placeholder="limitsiz" oninput="updateNextTierFrom(${i})"></td>
+    <td><input class="tier-inp" type="number" min="0" max="100" step="0.01" value="${rateVal}"
+         id="tier_rate_${i}" placeholder="0.00"></td>
+    <td><button class="btn btn-danger btn-sm" onclick="removeFpTierRow(this)">
+      <i class="fa-solid fa-xmark"></i></button></td>`;
+  tbody.appendChild(tr);
+}
+
+function updateNextTierFrom(i){
+  const toEl=document.getElementById(`tier_to_${i}`);
+  const nextFromEl=document.getElementById(`tier_from_${i+1}`);
+  if(toEl&&nextFromEl&&toEl.value){
+    nextFromEl.value=Number(toEl.value)+1;
+  }
+}
+
+function removeFpTierRow(btn){
+  btn.closest('tr').remove();
+}
+
+function getFpTiers(){
+  const tbody=document.getElementById('fpTiersBody');
+  const tiers=[];
+  Array.from(tbody.rows).forEach(row=>{
+    const inputs=row.querySelectorAll('input');
+    const fromV=Number(inputs[0].value)||0;
+    const toV=inputs[1].value.trim()===''?null:Number(inputs[1].value);
+    const rateV=parseFloat(inputs[2].value)||0;
+    tiers.push({from:fromV,to:toV,rate:rateV});
+  });
+  return tiers;
+}
+
+async function saveFeePackage(){
+  const g=id=>document.getElementById(id).value.trim();
+  const name=g('fpf_name'),status=g('fpf_status');
+  const effective_from=g('fpf_from'),effective_to=g('fpf_to');
+  const fpId=document.getElementById('fpf_id').value;
+  const pid=Number(document.getElementById('fpf_pid').value);
+  if(!name){showToast('Paket adı məcburidir!',false);return;}
+  const tiers=getFpTiers();
+  if(!tiers.length){showToast('Minimum bir tier əlavə edin!',false);return;}
+  const fields={partner_id:pid,name,status,effective_from,effective_to,tiers};
+  try{
+    if(fpId){
+      // edit
+      if(sbOn()) await sb('PATCH','fee_packages',{name,status,effective_from,effective_to,tiers},`?id=eq.${fpId}`);
+      const fp=(FEE_PACKAGES[pid]||[]).find(x=>x.id===Number(fpId));
+      if(fp) Object.assign(fp,{name,status,effective_from,effective_to,tiers});
+      showToast(`"${name}" yeniləndi.`);
+    }else{
+      let newId;
+      if(sbOn()){
+        const rows=await sb('POST','fee_packages',fields);
+        newId=Number(rows[0].id);
+      }else{newId=_nextFpId++;}
+      if(!FEE_PACKAGES[pid]) FEE_PACKAGES[pid]=[];
+      FEE_PACKAGES[pid].push({id:newId,...fields});
+      showToast(`"${name}" əlavə edildi.`);
+    }
+  }catch(e){showToast('Xəta: '+e.message,false);return;}
+  closeModal('feePackageFormModal');
+  // Reopen detail modal to refresh fee section
+  openDetailModal(pid);
+}
+
+async function deleteFeePackage(fpId,pid){
+  if(!confirm('Bu komisyon paketini silmək istəyirsiniz?'))return;
+  try{
+    if(sbOn()) await sb('DELETE','fee_packages',null,`?id=eq.${fpId}`);
+  }catch(e){showToast('Silmə xətası: '+e.message,false);return;}
+  if(FEE_PACKAGES[pid]) FEE_PACKAGES[pid]=FEE_PACKAGES[pid].filter(fp=>fp.id!==fpId);
+  showToast('Komisyon paketi silindi.');
+  openDetailModal(pid);
 }
 
 // ═══════════════════════ DOCX GENERATION (JSZip)
