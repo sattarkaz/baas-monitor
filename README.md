@@ -1,2 +1,0 @@
-# baas-monitor
-BaaS monitoring
