@@ -1,6 +1,6 @@
 <?php
 // =============================================================================
-// _common.php — Shared layout, authentication, and mock data layer
+// _common.php — Shared layout, authentication, and data layer
 // BaaS Partner Monitoring System
 //
 // All connection settings, table names, and feature flags come from config.php.
@@ -9,22 +9,24 @@
 
 // ----------------------------------------------------------------------------
 // LOAD CONFIGURATION
-// config.php is the single source of truth for data source settings.
 // ----------------------------------------------------------------------------
 $cfg = require_once __DIR__ . '/config.php';
 
 // Convenience shortcuts derived from config
 define('APP_NAME',    $cfg['app']['name']);
 define('APP_VERSION', $cfg['app']['version']);
-define('USE_MOCK_DATA', $cfg['mode'] === 'mock');
+
+// USE_MOCK_DATA = true when mode is 'mock' OR 'supabase'
+// В режиме supabase шаблоны используют тот же mock-путь,
+// но глобальные массивы заполняются из Supabase (см. блок ниже).
+define('USE_MOCK_DATA', in_array($cfg['mode'], ['mock', 'supabase']));
+define('USE_SUPABASE',  $cfg['mode'] === 'supabase');
 
 // Set timezone from config
 date_default_timezone_set($cfg['app']['timezone'] ?? 'Asia/Baku');
 
 // ----------------------------------------------------------------------------
-// DATABASE CONNECTION (used when USE_MOCK_DATA = false)
-// Reads DSN / user / password from config.php → db_monitor section.
-// A second connection for DWH is established on demand via get_dwh_pdo().
+// DATABASE CONNECTION (used when USE_MOCK_DATA = false, i.e. Oracle mode)
 // ----------------------------------------------------------------------------
 function get_monitor_pdo(): PDO {
     global $cfg;
@@ -53,9 +55,6 @@ function get_dwh_pdo(): PDO {
 /**
  * Resolve a table/view name from config.
  * Automatically appends the DB-link suffix for DWH objects when access_type = 'dblink'.
- *
- * Usage:  tbl('dwh_transaction_daily_agg')
- *         → "DWH.TRANSACTION_DAILY_AGG@BAAS_DWH_LINK"
  */
 function tbl(string $key): string {
     global $cfg;
@@ -96,12 +95,11 @@ function is_admin(): bool {
 
 // ----------------------------------------------------------------------------
 // MOCK DATA (mirrors Oracle query result sets)
-// In production each array below is replaced by the Oracle query shown above it
+// В режиме 'supabase' эти массивы перезаписываются данными из Supabase
+// в блоке ниже. В режиме 'mock' используются как есть.
 // ----------------------------------------------------------------------------
 
 // -- Oracle query: SELECT * FROM partners ORDER BY partner_name
-// New fields: voen, signatory_name, signatory_position, bank_name, bank_account,
-//             bank_code, legal_address, contact_phone
 $MOCK_PARTNERS = [
     [
         'partner_id'          => 1,
@@ -207,8 +205,6 @@ $MOCK_PARTNERS = [
     ],
 ];
 
-// -- Oracle query: SELECT cp.*, s.issued_cards, s.remaining_cards, s.usage_percent
-//    FROM card_packages cp JOIN package_usage_snapshot s ON ...
 $MOCK_PACKAGES = [
     ['package_id' => 1,  'partner_id' => 1, 'package_size' => 10000, 'start_date' => '01.01.2024', 'end_date' => '31.12.2024', 'status' => 'active',    'issued_cards' => 9245,  'remaining_cards' => 755,   'usage_percent' => 92.45],
     ['package_id' => 2,  'partner_id' => 1, 'package_size' =>  5000, 'start_date' => '01.01.2025', 'end_date' => '31.12.2025', 'status' => 'active',    'issued_cards' => 1832,  'remaining_cards' => 3168,  'usage_percent' => 36.64],
@@ -222,7 +218,6 @@ $MOCK_PACKAGES = [
     ['package_id' => 10, 'partner_id' => 6, 'package_size' => 15000, 'start_date' => '01.01.2025', 'end_date' => '31.12.2025', 'status' => 'active',    'issued_cards' => 8732,  'remaining_cards' => 6268,  'usage_percent' => 58.21],
 ];
 
-// -- Oracle query: SELECT * FROM v_partner_summary (aggregated per partner)
 $MOCK_PARTNER_SUMMARY = [
     1 => ['total_pkg_size' => 15000, 'total_issued' => 11077, 'total_remaining' => 3923, 'avg_usage_pct' => 64.55, 'txn_volume_30d' => 28450230.50, 'txn_count_30d' => 45823],
     2 => ['total_pkg_size' => 10000, 'total_issued' =>  8104, 'total_remaining' => 1896, 'avg_usage_pct' => 81.04, 'txn_volume_30d' => 18230540.75, 'txn_count_30d' => 31402],
@@ -232,29 +227,26 @@ $MOCK_PARTNER_SUMMARY = [
     6 => ['total_pkg_size' => 15000, 'total_issued' =>  8732, 'total_remaining' => 6268, 'avg_usage_pct' => 58.21, 'txn_volume_30d' => 35620900.00, 'txn_count_30d' => 52140],
 ];
 
-// -- Oracle query: SELECT mcc, SUM(txn_count), SUM(txn_volume) FROM dwh_transaction_mcc_agg GROUP BY mcc
 $MOCK_MCC = [
-    ['mcc' => '5411', 'label' => 'Продуктовые магазины',     'txn_count' => 28451, 'txn_volume' => 31250800.00],
-    ['mcc' => '5812', 'label' => 'Рестораны и кафе',          'txn_count' => 21302, 'txn_volume' => 14820300.50],
-    ['mcc' => '5732', 'label' => 'Электроника',               'txn_count' =>  8920, 'txn_volume' => 22140500.00],
-    ['mcc' => '5541', 'label' => 'Автозаправки',              'txn_count' => 15673, 'txn_volume' => 10200450.25],
-    ['mcc' => '4814', 'label' => 'Телекоммуникации',          'txn_count' =>  9840, 'txn_volume' =>  5830200.75],
-    ['mcc' => '7011', 'label' => 'Отели и размещение',        'txn_count' =>  3210, 'txn_volume' =>  8940100.00],
-    ['mcc' => '5999', 'label' => 'Прочая розница',            'txn_count' => 12804, 'txn_volume' =>  7620400.50],
+    ['mcc' => '5411', 'label' => 'Ərzaq mağazaları',              'txn_count' => 28451, 'txn_volume' => 31250800.00],
+    ['mcc' => '5812', 'label' => 'Restoranlar və kafelər',         'txn_count' => 21302, 'txn_volume' => 14820300.50],
+    ['mcc' => '5732', 'label' => 'Elektronika',                    'txn_count' =>  8920, 'txn_volume' => 22140500.00],
+    ['mcc' => '5541', 'label' => 'Yanacaqdoldurma stansiyaları',   'txn_count' => 15673, 'txn_volume' => 10200450.25],
+    ['mcc' => '4814', 'label' => 'Telekommunikasiya',              'txn_count' =>  9840, 'txn_volume' =>  5830200.75],
+    ['mcc' => '7011', 'label' => 'Otellər və mehmanxanalar',       'txn_count' =>  3210, 'txn_volume' =>  8940100.00],
+    ['mcc' => '5999', 'label' => 'Digər pərakəndə satış',          'txn_count' => 12804, 'txn_volume' =>  7620400.50],
 ];
 
-// -- Oracle query: SELECT merchant_country, SUM(...) FROM dwh_transaction_country_agg GROUP BY merchant_country
 $MOCK_COUNTRY = [
-    ['code' => 'RU', 'name' => 'Россия',      'flag' => '🇷🇺', 'txn_count' => 68204, 'txn_volume' => 78450200.00],
-    ['code' => 'KZ', 'name' => 'Казахстан',   'flag' => '🇰🇿', 'txn_count' => 12340, 'txn_volume' => 10320400.50],
-    ['code' => 'BY', 'name' => 'Беларусь',    'flag' => '🇧🇾', 'txn_count' =>  5820, 'txn_volume' =>  4250300.25],
-    ['code' => 'TR', 'name' => 'Турция',      'flag' => '🇹🇷', 'txn_count' =>  3410, 'txn_volume' =>  5180200.75],
-    ['code' => 'AE', 'name' => 'ОАЭ',         'flag' => '🇦🇪', 'txn_count' =>  2180, 'txn_volume' =>  4820100.00],
-    ['code' => 'DE', 'name' => 'Германия',    'flag' => '🇩🇪', 'txn_count' =>  1840, 'txn_volume' =>  3510400.50],
-    ['code' => 'US', 'name' => 'США',         'flag' => '🇺🇸', 'txn_count' =>  1202, 'txn_volume' =>  2620300.00],
+    ['code' => 'AZ', 'name' => 'Azərbaycan', 'flag' => '🇦🇿', 'txn_count' => 68204, 'txn_volume' => 78450200.00],
+    ['code' => 'TR', 'name' => 'Türkiyə',    'flag' => '🇹🇷', 'txn_count' => 12340, 'txn_volume' => 10320400.50],
+    ['code' => 'GE', 'name' => 'Gürcüstan',  'flag' => '🇬🇪', 'txn_count' =>  5820, 'txn_volume' =>  4250300.25],
+    ['code' => 'RU', 'name' => 'Rusiya',     'flag' => '🇷🇺', 'txn_count' =>  3410, 'txn_volume' =>  5180200.75],
+    ['code' => 'AE', 'name' => 'BƏƏ',        'flag' => '🇦🇪', 'txn_count' =>  2180, 'txn_volume' =>  4820100.00],
+    ['code' => 'DE', 'name' => 'Almaniya',   'flag' => '🇩🇪', 'txn_count' =>  1840, 'txn_volume' =>  3510400.50],
+    ['code' => 'US', 'name' => 'ABŞ',        'flag' => '🇺🇸', 'txn_count' =>  1202, 'txn_volume' =>  2620300.00],
 ];
 
-// -- Oracle query: SELECT * FROM BAAS_MONITOR.ROLES ORDER BY role_name
 $MOCK_ROLES = [
     ['role_id' => 1, 'role_name' => 'Administrator', 'description' => 'Full access — users, partners, settings'],
     ['role_id' => 2, 'role_name' => 'Manager',       'description' => 'Create/edit partners and packages'],
@@ -262,55 +254,117 @@ $MOCK_ROLES = [
     ['role_id' => 4, 'role_name' => 'Viewer',        'description' => 'Dashboard and transactions view only'],
 ];
 
-// -- Oracle query: SELECT u.*, r.role_name FROM BAAS_MONITOR.USERS u JOIN BAAS_MONITOR.ROLES r ON r.role_id=u.role_id
 $MOCK_USERS = [
-    ['user_id' => 1, 'full_name' => 'Aynur Həsənova',  'login' => 'admin',   'email' => 'a.hasanova@bank.az',  'role_id' => 1, 'role_name' => 'Administrator', 'status' => 'active',   'created_at' => '01.01.2024', 'last_login' => '12.05.2026'],
-    ['user_id' => 2, 'full_name' => 'Elçin Quliyev',   'login' => 'manager', 'email' => 'e.quliyev@bank.az',   'role_id' => 2, 'role_name' => 'Manager',       'status' => 'active',   'created_at' => '15.01.2024', 'last_login' => '11.05.2026'],
-    ['user_id' => 3, 'full_name' => 'Leyla Əhmədova',  'login' => 'analyst', 'email' => 'l.ahmadova@bank.az',  'role_id' => 3, 'role_name' => 'Analyst',       'status' => 'active',   'created_at' => '20.02.2024', 'last_login' => '10.05.2026'],
-    ['user_id' => 4, 'full_name' => 'Orxan Babayev',   'login' => 'obabayev','email' => 'o.babayev@bank.az',   'role_id' => 4, 'role_name' => 'Viewer',        'status' => 'active',   'created_at' => '01.03.2024', 'last_login' => '08.05.2026'],
-    ['user_id' => 5, 'full_name' => 'Günel Musayeva',  'login' => 'gmusayeva','email' => 'g.musayeva@bank.az', 'role_id' => 3, 'role_name' => 'Analyst',       'status' => 'inactive', 'created_at' => '10.04.2024', 'last_login' => '02.04.2026'],
+    ['user_id' => 1, 'full_name' => 'Aynur Həsənova',  'login' => 'admin',    'email' => 'a.hasanova@bank.az',  'role_id' => 1, 'role_name' => 'Administrator', 'status' => 'active',   'created_at' => '01.01.2024', 'last_login' => '12.05.2026'],
+    ['user_id' => 2, 'full_name' => 'Elçin Quliyev',   'login' => 'manager',  'email' => 'e.quliyev@bank.az',   'role_id' => 2, 'role_name' => 'Manager',       'status' => 'active',   'created_at' => '15.01.2024', 'last_login' => '11.05.2026'],
+    ['user_id' => 3, 'full_name' => 'Leyla Əhmədova',  'login' => 'analyst',  'email' => 'l.ahmadova@bank.az',  'role_id' => 3, 'role_name' => 'Analyst',       'status' => 'active',   'created_at' => '20.02.2024', 'last_login' => '10.05.2026'],
+    ['user_id' => 4, 'full_name' => 'Orxan Babayev',   'login' => 'obabayev', 'email' => 'o.babayev@bank.az',   'role_id' => 4, 'role_name' => 'Viewer',        'status' => 'active',   'created_at' => '01.03.2024', 'last_login' => '08.05.2026'],
+    ['user_id' => 5, 'full_name' => 'Günel Musayeva',  'login' => 'gmusayeva','email' => 'g.musayeva@bank.az',  'role_id' => 3, 'role_name' => 'Analyst',       'status' => 'inactive', 'created_at' => '10.04.2024', 'last_login' => '02.04.2026'],
 ];
 
-// -- Oracle query: SELECT * FROM BAAS_MONITOR.PARTNER_DOCUMENTS WHERE partner_id = :pid ORDER BY uploaded_at DESC
 $MOCK_PARTNER_DOCS = [
     1 => [
-        ['doc_id' => 1, 'partner_id' => 1, 'file_name' => 'AzarTech_Muqavile_2023.pdf',     'file_type' => 'pdf',  'file_size' => 245120, 'uploaded_by' => 'Aynur Həsənova',  'uploaded_at' => '20.01.2023', 'notes' => 'İmzalanmış müqavilə'],
-        ['doc_id' => 2, 'partner_id' => 1, 'file_name' => 'AzarTech_NDA_2023.docx',         'file_type' => 'docx', 'file_size' => 32768,  'uploaded_by' => 'Aynur Həsənova',  'uploaded_at' => '20.01.2023', 'notes' => 'Məxfilik sazişi'],
-        ['doc_id' => 3, 'partner_id' => 1, 'file_name' => 'AzarTech_TarifElave_2024.docx',  'file_type' => 'docx', 'file_size' => 41984,  'uploaded_by' => 'Elçin Quliyev',   'uploaded_at' => '05.01.2024', 'notes' => '2024-cü il tarif əlavəsi'],
+        ['doc_id' => 1, 'partner_id' => 1, 'file_name' => 'AzarTech_Muqavile_2023.pdf',    'file_type' => 'pdf',  'file_size' => 245120, 'uploaded_by' => 'Aynur Həsənova', 'uploaded_at' => '20.01.2023', 'notes' => 'İmzalanmış müqavilə'],
+        ['doc_id' => 2, 'partner_id' => 1, 'file_name' => 'AzarTech_NDA_2023.docx',        'file_type' => 'docx', 'file_size' => 32768,  'uploaded_by' => 'Aynur Həsənova', 'uploaded_at' => '20.01.2023', 'notes' => 'Məxfilik sazişi'],
+        ['doc_id' => 3, 'partner_id' => 1, 'file_name' => 'AzarTech_TarifElave_2024.docx', 'file_type' => 'docx', 'file_size' => 41984,  'uploaded_by' => 'Elçin Quliyev',  'uploaded_at' => '05.01.2024', 'notes' => '2024-cü il tarif əlavəsi'],
     ],
     2 => [
-        ['doc_id' => 4, 'partner_id' => 2, 'file_name' => 'FinTex_Muqavile_2022.pdf',       'file_type' => 'pdf',  'file_size' => 312320, 'uploaded_by' => 'Elçin Quliyev',   'uploaded_at' => '10.11.2022', 'notes' => 'Əsas müqavilə'],
-        ['doc_id' => 5, 'partner_id' => 2, 'file_name' => 'FinTex_TarifElave_2024.pdf',     'file_type' => 'pdf',  'file_size' => 128000, 'uploaded_by' => 'Elçin Quliyev',   'uploaded_at' => '15.06.2024', 'notes' => 'Tarif paketi əlavəsi'],
+        ['doc_id' => 4, 'partner_id' => 2, 'file_name' => 'FinTex_Muqavile_2022.pdf',      'file_type' => 'pdf',  'file_size' => 312320, 'uploaded_by' => 'Elçin Quliyev',  'uploaded_at' => '10.11.2022', 'notes' => 'Əsas müqavilə'],
+        ['doc_id' => 5, 'partner_id' => 2, 'file_name' => 'FinTex_TarifElave_2024.pdf',    'file_type' => 'pdf',  'file_size' => 128000, 'uploaded_by' => 'Elçin Quliyev',  'uploaded_at' => '15.06.2024', 'notes' => 'Tarif paketi əlavəsi'],
     ],
     3 => [
-        ['doc_id' => 6, 'partner_id' => 3, 'file_name' => 'EasyShop_Muqavile_2023.pdf',     'file_type' => 'pdf',  'file_size' => 198656, 'uploaded_by' => 'Aynur Həsənova',  'uploaded_at' => '25.03.2023', 'notes' => ''],
+        ['doc_id' => 6, 'partner_id' => 3, 'file_name' => 'EasyShop_Muqavile_2023.pdf',    'file_type' => 'pdf',  'file_size' => 198656, 'uploaded_by' => 'Aynur Həsənova', 'uploaded_at' => '25.03.2023', 'notes' => ''],
     ],
     4 => [],
     5 => [
-        ['doc_id' => 7, 'partner_id' => 5, 'file_name' => 'KreditXidmet_NDA_2022.docx',     'file_type' => 'docx', 'file_size' => 29696,  'uploaded_by' => 'Aynur Həsənova',  'uploaded_at' => '12.08.2022', 'notes' => 'NDA'],
+        ['doc_id' => 7, 'partner_id' => 5, 'file_name' => 'KreditXidmet_NDA_2022.docx',    'file_type' => 'docx', 'file_size' => 29696,  'uploaded_by' => 'Aynur Həsənova', 'uploaded_at' => '12.08.2022', 'notes' => 'NDA'],
     ],
     6 => [
-        ['doc_id' => 8, 'partner_id' => 6, 'file_name' => 'ReqemsalBank_Muqavile_2024.pdf', 'file_type' => 'pdf',  'file_size' => 278528, 'uploaded_by' => 'Elçin Quliyev',   'uploaded_at' => '30.01.2024', 'notes' => 'İmzalanmış əsas müqavilə'],
-        ['doc_id' => 9, 'partner_id' => 6, 'file_name' => 'ReqemsalBank_NDA_2024.pdf',      'file_type' => 'pdf',  'file_size' => 156672, 'uploaded_by' => 'Elçin Quliyev',   'uploaded_at' => '30.01.2024', 'notes' => 'Məxfilik sazişi'],
+        ['doc_id' => 8, 'partner_id' => 6, 'file_name' => 'ReqemsalBank_Muqavile_2024.pdf','file_type' => 'pdf',  'file_size' => 278528, 'uploaded_by' => 'Elçin Quliyev',  'uploaded_at' => '30.01.2024', 'notes' => 'İmzalanmış əsas müqavilə'],
+        ['doc_id' => 9, 'partner_id' => 6, 'file_name' => 'ReqemsalBank_NDA_2024.pdf',     'file_type' => 'pdf',  'file_size' => 156672, 'uploaded_by' => 'Elçin Quliyev',  'uploaded_at' => '30.01.2024', 'notes' => 'Məxfilik sazişi'],
     ],
 ];
 
-// Generate 30-day daily transaction data for charts
+// ----------------------------------------------------------------------------
+// SUPABASE DATA OVERRIDE
+// Если mode = 'supabase', загружаем данные из Supabase и перезаписываем
+// глобальные массивы выше. При ошибке соединения остаются mock-данные.
+// Шаблонные файлы (dashboard.php, partners.php и т.д.) не требуют правок —
+// они всегда обращаются к $MOCK_* переменным.
+// ----------------------------------------------------------------------------
+if (USE_SUPABASE) {
+    require_once __DIR__ . '/_supabase.php';
+
+    try {
+        // Загрузка основных таблиц
+        $sb_partners = sb_load_partners();
+        $sb_packages = sb_load_packages();
+        $sb_users    = sb_load_users();
+        $sb_docs     = sb_load_docs();
+
+        // Перезапись глобальных массивов (только если данные получены)
+        if (!empty($sb_partners)) {
+            $MOCK_PARTNERS = $sb_partners;
+        }
+        if (!empty($sb_packages)) {
+            $MOCK_PACKAGES = $sb_packages;
+        }
+        if (!empty($sb_users)) {
+            $MOCK_USERS = $sb_users;
+        }
+
+        // Пересборка документов по partner_id
+        $MOCK_PARTNER_DOCS = sb_build_partner_docs($MOCK_PARTNERS, $sb_docs);
+
+        // Пересборка сводки партнёров из пакетов (транзакции = 0)
+        $MOCK_PARTNER_SUMMARY = sb_build_partner_summary($MOCK_PARTNERS, $MOCK_PACKAGES);
+
+        // Загрузка MCC-данных (таблица создаётся migration v3)
+        try {
+            $sb_mcc = sb_load_mcc();
+            if (!empty($sb_mcc)) {
+                $MOCK_MCC = $sb_mcc;
+            }
+        } catch (RuntimeException $e) {
+            // Таблица mcc_data ещё не создана — используем mock
+            error_log('[BaaS] mcc_data not available: ' . $e->getMessage());
+        }
+
+        // Загрузка данных по странам (таблица создаётся migration v3)
+        try {
+            $sb_country = sb_load_country();
+            if (!empty($sb_country)) {
+                $MOCK_COUNTRY = $sb_country;
+            }
+        } catch (RuntimeException $e) {
+            // Таблица country_data ещё не создана — используем mock
+            error_log('[BaaS] country_data not available: ' . $e->getMessage());
+        }
+
+    } catch (RuntimeException $e) {
+        // Supabase недоступен — продолжаем с mock-данными и логируем ошибку
+        error_log('[BaaS] Supabase load failed, falling back to mock data: ' . $e->getMessage());
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Generate 30-day daily transaction data for charts (mock — no real txn table)
+// ----------------------------------------------------------------------------
 function mock_daily_txn_data(int $partner_id = 0): array {
     $base_volumes = [1 => 950000, 2 => 610000, 3 => 420000, 4 => 715000, 6 => 1190000];
     $data = [];
     for ($i = 29; $i >= 0; $i--) {
-        $ts          = strtotime("-{$i} days");
-        $date        = date('d.m', $ts);
-        $date_full   = date('Y-m-d', $ts);
-        $dow         = (int)date('N', $ts);
-        $wknd        = ($dow >= 6) ? 0.63 : 1.0;
-        $seed        = ($i * 137 + $partner_id * 31) % 100;
-        $variation   = 1.0 + ($seed / 100 - 0.5) * 0.18;
+        $ts        = strtotime("-{$i} days");
+        $date      = date('d.m', $ts);
+        $date_full = date('Y-m-d', $ts);
+        $dow       = (int)date('N', $ts);
+        $wknd      = ($dow >= 6) ? 0.63 : 1.0;
+        $seed      = ($i * 137 + $partner_id * 31) % 100;
+        $variation = 1.0 + ($seed / 100 - 0.5) * 0.18;
 
         if ($partner_id > 0 && isset($base_volumes[$partner_id])) {
-            $vol   = round($base_volumes[$partner_id] * $variation * $wknd, 2);
-            $cnt   = (int)round($vol / 650);
+            $vol = round($base_volumes[$partner_id] * $variation * $wknd, 2);
+            $cnt = (int)round($vol / 650);
         } else {
             $vol = $cnt = 0;
             foreach ($base_volumes as $pid => $base) {
@@ -342,11 +396,11 @@ function fmt_rub(float $n): string {
 
 function status_badge(string $status): string {
     $map = [
-        'active'    => ['Active / Активен',    'badge-active'],
-        'inactive'  => ['Inactive / Неактивен','badge-inactive'],
-        'exhausted' => ['Exhausted / Исчерпан','badge-exhausted'],
-        'closed'    => ['Closed / Закрыт',     'badge-closed'],
-        'suspended' => ['Suspended',            'badge-inactive'],
+        'active'    => ['Active',    'badge-active'],
+        'inactive'  => ['Inactive',  'badge-inactive'],
+        'exhausted' => ['Exhausted', 'badge-exhausted'],
+        'closed'    => ['Closed',    'badge-closed'],
+        'suspended' => ['Suspended', 'badge-inactive'],
     ];
     [$label, $cls] = $map[$status] ?? [$status, 'badge-inactive'];
     return "<span class=\"badge {$cls}\">{$label}</span>";
@@ -366,13 +420,8 @@ function usage_bar(float $pct): string {
 // ----------------------------------------------------------------------------
 function render_header(string $title = 'Dashboard', string $active = 'dashboard'): void {
     $u = current_user();
-    $nav = [
-        ['id' => 'dashboard',     'href' => 'dashboard.php',    'icon' => 'fa-gauge-high',   'label' => 'Dashboard'],
-        ['id' => 'partners',      'href' => 'partners.php',     'icon' => 'fa-handshake',    'label' => 'Partners & Packages'],
-        ['id' => 'transactions',  'href' => 'transactions.php', 'icon' => 'fa-chart-line',   'label' => 'Transactions'],
-    ];
     ?><!DOCTYPE html>
-<html lang="en">
+<html lang="az">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -420,6 +469,7 @@ body{font-family:'Inter',sans-serif;font-size:14px;background:#f0f4f8;color:#1a2
 .cards-row-6{grid-template-columns:repeat(6,1fr)}
 .cards-row-3{grid-template-columns:repeat(3,1fr)}
 .cards-row-2{grid-template-columns:repeat(2,1fr)}
+.cards-row-4{grid-template-columns:repeat(4,1fr)}
 @media(max-width:1400px){.cards-row-6{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:900px){.cards-row-6,.cards-row-3{grid-template-columns:repeat(2,1fr)}.cards-row-2{grid-template-columns:1fr}}
 
@@ -482,23 +532,39 @@ td.center{text-align:center}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
 .modal{background:#fff;border-radius:14px;width:780px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal-box{background:#fff;border-radius:14px;width:700px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
 .modal-header{padding:20px 24px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between}
 .modal-header h2{font-size:16px;font-weight:700}
 .modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#64748b;padding:4px}
 .modal-body{padding:24px}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px}
+
+/* ===== FORM ===== */
+.form-row{display:flex;gap:14px;margin-bottom:14px}
+.form-group{display:flex;flex-direction:column;gap:5px;flex:1}
+.form-group label{font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.4px}
+.form-input{border:1.5px solid #e2e8f0;border-radius:8px;padding:9px 12px;font-size:13px;color:#1a2332;font-family:inherit;outline:none;transition:border-color .18s;background:#fff;width:100%}
+.form-input:focus{border-color:#1e88e5;box-shadow:0 0 0 3px rgba(30,136,229,.12)}
 
 /* ===== SECTION LABEL ===== */
 .section-label{font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;margin-top:20px}
 .section-label:first-child{margin-top:0}
+.form-section-label{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #e2e8f0}
 
 /* ===== ALERT / NOTICE ===== */
 .notice{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px}
 .notice.info{background:#e3f2fd;color:#0d47a1}
 .notice.warn{background:#fff3e0;color:#bf360c}
 .notice i{margin-top:1px}
+
+/* ===== DB MODE BADGE ===== */
+.db-mode-badge{background:#e0f2f1;color:#004d40;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.db-mode-badge.supabase{background:#e0f2f1;color:#004d40}
+.db-mode-badge.mock{background:#fff3e0;color:#e65100}
+.db-mode-badge.oracle{background:#e3f2fd;color:#0d47a1}
 </style>
 <?php
-}  // end render_header
+}
 
 function render_nav(string $active): void {
     $nav = [
@@ -509,8 +575,13 @@ function render_nav(string $active): void {
     if (is_admin()) {
         $nav[] = ['id' => 'users', 'href' => 'users.php', 'icon' => 'fa-users-gear', 'label' => 'Users & Roles'];
     }
-    $u = current_user();
-    $initials = implode('', array_map(fn($w) => mb_strtoupper(mb_substr($w,0,1)), array_slice(explode(' ', $u['name'] ?? 'Admin'), 0, 2)));
+    $u        = current_user();
+    $initials = implode('', array_map(
+        fn($w) => mb_strtoupper(mb_substr($w, 0, 1)),
+        array_slice(explode(' ', $u['name'] ?? 'Admin'), 0, 2)
+    ));
+    $modeBadge = USE_SUPABASE ? 'supabase' : (USE_MOCK_DATA ? 'mock' : 'oracle');
+    $modeLabel = USE_SUPABASE ? 'Supabase' : (USE_MOCK_DATA ? 'Mock' : 'Oracle');
     ?>
 <div class="sidebar">
   <div class="sidebar-brand">
@@ -540,12 +611,21 @@ function render_nav(string $active): void {
 <?php
 }
 
-function render_topbar(string $title): void { ?>
+function render_topbar(string $title): void {
+    global $cfg;
+    $mode = $cfg['mode'] ?? 'mock';
+    $modeLabels = ['supabase' => 'Supabase', 'oracle' => 'Oracle DB', 'mock' => 'Mock Data'];
+    $modeColors = ['supabase' => '#2e7d32', 'oracle' => '#1565c0', 'mock' => '#e65100'];
+    $modeLabel  = $modeLabels[$mode] ?? $mode;
+    $modeColor  = $modeColors[$mode]  ?? '#64748b';
+    ?>
 <div class="topbar">
   <div class="topbar-title"><?= htmlspecialchars($title) ?></div>
   <div class="topbar-meta">
-    <span class="sync-badge"><i class="fa-solid fa-rotate"></i> Last sync: 07.05.2026 02:09</span>
-    <span style="color:#94a3b8;font-size:12px">Oracle DWH: <strong style="color:#2e7d32">Connected</strong></span>
+    <span style="background:#f0f4f8;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;color:<?= $modeColor ?>">
+      <i class="fa-solid fa-database"></i> <?= $modeLabel ?>
+    </span>
+    <span style="color:#94a3b8;font-size:12px"><?= date('d.m.Y H:i') ?></span>
   </div>
 </div>
 <?php }

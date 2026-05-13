@@ -1,6 +1,7 @@
 <?php
 // =============================================================================
 // index.php — Login page
+// BaaS Partner Monitoring System
 // =============================================================================
 require_once '_common.php';
 
@@ -12,45 +13,99 @@ if (!empty($_SESSION['user'])) {
 
 $error = '';
 
-// Demo credentials
+// ─── Demo / fallback credentials (used in mock mode OR when Supabase is down) ─
 $DEMO_USERS = [
-    'admin'   => ['pass' => 'admin123',   'name' => 'Алексей Волков',   'role' => 'Administrator'],
-    'analyst' => ['pass' => 'analyst123', 'name' => 'Мария Смирнова',   'role' => 'Analyst'],
-    'manager' => ['pass' => 'manager123', 'name' => 'Дмитрий Козлов',   'role' => 'Partner Manager'],
+    'admin'    => ['pass' => 'admin123',   'name' => 'Admin İstifadəçi',    'role' => 'Administrator'],
+    'analyst'  => ['pass' => 'analyst123', 'name' => 'Analitik İstifadəçi', 'role' => 'Analyst'],
+    'manager'  => ['pass' => 'manager123', 'name' => 'Menecer İstifadəçi',  'role' => 'Partner Manager'],
+    'manager2' => ['pass' => 'manager123', 'name' => 'Menecer 2',           'role' => 'Partner Manager'],
+    'viewer1'  => ['pass' => 'viewer123',  'name' => 'Baxıcı İstifadəçi',   'role' => 'Viewer'],
 ];
 
+// ─── POST handler ─────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $login    = trim($_POST['login']    ?? '');
     $password = trim($_POST['password'] ?? '');
 
-    /*
-     * Oracle query (production):
-     * SELECT u.user_id, u.full_name, u.email, r.role_name
-     * FROM users u
-     * JOIN roles r ON r.role_id = u.role_id
-     * WHERE u.email = :login AND u.status = 'active'
-     * Then verify password_hash with password_verify()
-     */
+    $authenticated = false;
 
-    if (isset($DEMO_USERS[$login]) && $DEMO_USERS[$login]['pass'] === $password) {
-        $_SESSION['user'] = [
-            'login' => $login,
-            'name'  => $DEMO_USERS[$login]['name'],
-            'role'  => $DEMO_USERS[$login]['role'],
-        ];
+    // ── 1. Supabase authentication ──────────────────────────────────────────
+    if (USE_SUPABASE && !$authenticated) {
+        try {
+            $sb_user = sb_verify_login($login, $password);
+            if ($sb_user !== null) {
+                $role = ucfirst($sb_user['role'] ?? 'viewer');
+                $_SESSION['user'] = [
+                    'login' => $sb_user['login'] ?? $login,
+                    'name'  => $sb_user['name']  ?? $login,
+                    'role'  => $role,
+                    'email' => $sb_user['email'] ?? '',
+                    'id'    => $sb_user['id']    ?? null,
+                ];
+                $authenticated = true;
+            }
+        } catch (RuntimeException $e) {
+            // Supabase unavailable — fall through to demo credentials
+            error_log('[BaaS] Supabase login failed, trying demo credentials: ' . $e->getMessage());
+        }
+    }
+
+    // ── 2. Fallback: demo / mock credentials ───────────────────────────────
+    if (!$authenticated) {
+        if (isset($DEMO_USERS[$login]) && $DEMO_USERS[$login]['pass'] === $password) {
+            $_SESSION['user'] = [
+                'login' => $login,
+                'name'  => $DEMO_USERS[$login]['name'],
+                'role'  => $DEMO_USERS[$login]['role'],
+                'email' => '',
+                'id'    => null,
+            ];
+            $authenticated = true;
+        }
+    }
+
+    if ($authenticated) {
+        // Regenerate session ID on login (security)
+        session_regenerate_id(true);
         header('Location: dashboard.php');
         exit;
     } else {
-        $error = 'Invalid credentials. Please try again.';
+        $error = 'Yanlış giriş adı və ya şifrə. Zəhmət olmasa yenidən cəhd edin.';
     }
+}
+
+// ─── Determine which mode note to show ────────────────────────────────────────
+$mode = $GLOBALS['cfg']['mode'] ?? 'mock';
+if ($mode === 'supabase') {
+    $mode_icon  = 'fa-bolt';
+    $mode_color = '#065f46';
+    $mode_bg    = '#d1fae5';
+    $mode_label = 'Supabase';
+    $mode_note  = 'Autentifikasiya Supabase <code>sys_users</code> cədvəli vasitəsilə həyata keçirilir. '
+                . 'Əlçatmaz olduqda demo etimadnamələrinə keçid edilir.';
+} elseif ($mode === 'oracle') {
+    $mode_icon  = 'fa-database';
+    $mode_color = '#7c3aed';
+    $mode_bg    = '#ede9fe';
+    $mode_label = 'Oracle DB';
+    $mode_note  = 'Oracle 19c+ ilə işləyir. İstifadəçilər <code>BAAS_MONITOR.USERS</code> cədvəlindən '
+                . 'yüklənir. Şifrə <code>password_verify()</code> ilə yoxlanılır.';
+} else {
+    $mode_icon  = 'fa-flask';
+    $mode_color = '#92400e';
+    $mode_bg    = '#fef3c7';
+    $mode_label = 'Mock Data';
+    $mode_note  = 'Demo rejimi — PHP massivlərindən istifadə edilir. '
+                . 'Supabase-ə keçmək üçün <code>config.php</code> faylında '
+                . '<code>mode</code> parametrini <code>\'supabase\'</code> olaraq təyin edin.';
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="az">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sign In — BaaS Monitor</title>
+<title>Giriş — BaaS Monitor</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -78,14 +133,16 @@ body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#0a1628 0%
 
 .demo-box{margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px}
 .demo-box h4{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
-.demo-cred{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #e2e8f0;font-size:12px}
+.demo-cred{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #e2e8f0;font-size:12px;gap:8px}
 .demo-cred:last-child{border-bottom:none;padding-bottom:0}
+.demo-cred .cred-left{display:flex;align-items:center;gap:6px}
 .demo-cred span.login-val{font-family:monospace;background:#e2e8f0;padding:2px 7px;border-radius:4px;color:#334155;font-size:11px}
 .demo-cred span.pass-val{color:#94a3b8;font-size:11px}
-.demo-cred .role-tag{color:#1e88e5;font-weight:600}
+.demo-cred .role-tag{color:#1e88e5;font-weight:600;font-size:11px;white-space:nowrap}
 
-.db-note{margin-top:16px;background:#e3f2fd;border-radius:8px;padding:12px 14px;font-size:11px;color:#0d47a1;line-height:1.6}
-.db-note strong{display:block;margin-bottom:3px}
+.db-note{margin-top:14px;border-radius:8px;padding:12px 14px;font-size:11px;line-height:1.65}
+.db-note strong{display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:12px}
+.db-note code{background:rgba(0,0,0,.07);padding:1px 5px;border-radius:3px;font-size:10px}
 </style>
 </head>
 <body>
@@ -97,8 +154,8 @@ body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#0a1628 0%
   </div>
 
   <div class="login-card">
-    <h2>Sign In / Войти</h2>
-    <p class="sub">Enter your credentials to access the monitoring platform.</p>
+    <h2>Giriş / Sign In</h2>
+    <p class="sub">Monitorinq platformasına daxil olmaq üçün etimadnamələrinizi daxil edin.</p>
 
     <?php if ($error): ?>
     <div class="error-msg"><i class="fa-solid fa-triangle-exclamation"></i><?= htmlspecialchars($error) ?></div>
@@ -106,7 +163,7 @@ body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#0a1628 0%
 
     <form method="POST" action="">
       <div class="form-group">
-        <label>Username / Логин</label>
+        <label>İstifadəçi adı / Login</label>
         <div class="input-wrap">
           <i class="fa-solid fa-user"></i>
           <input type="text" name="login" placeholder="admin" required autocomplete="username"
@@ -114,36 +171,38 @@ body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#0a1628 0%
         </div>
       </div>
       <div class="form-group">
-        <label>Password / Пароль</label>
+        <label>Şifrə / Password</label>
         <div class="input-wrap">
           <i class="fa-solid fa-lock"></i>
           <input type="password" name="password" placeholder="••••••••" required autocomplete="current-password">
         </div>
       </div>
-      <button class="btn-login" type="submit"><i class="fa-solid fa-right-to-bracket"></i> &nbsp; Sign In</button>
+      <button class="btn-login" type="submit"><i class="fa-solid fa-right-to-bracket"></i>&nbsp; Daxil ol</button>
     </form>
 
     <div class="demo-box">
-      <h4><i class="fa-solid fa-flask"></i> Demo Credentials</h4>
+      <h4><i class="fa-solid fa-key"></i>&nbsp; Demo Etimadnamələri</h4>
       <div class="demo-cred">
-        <span><span class="login-val">admin</span> / <span class="pass-val">admin123</span></span>
+        <div class="cred-left"><span class="login-val">admin</span><span class="pass-val">/ admin123</span></div>
         <span class="role-tag">Administrator</span>
       </div>
       <div class="demo-cred">
-        <span><span class="login-val">analyst</span> / <span class="pass-val">analyst123</span></span>
+        <div class="cred-left"><span class="login-val">analyst</span><span class="pass-val">/ analyst123</span></div>
         <span class="role-tag">Analyst</span>
       </div>
       <div class="demo-cred">
-        <span><span class="login-val">manager</span> / <span class="pass-val">manager123</span></span>
+        <div class="cred-left"><span class="login-val">manager</span><span class="pass-val">/ manager123</span></div>
         <span class="role-tag">Partner Manager</span>
+      </div>
+      <div class="demo-cred">
+        <div class="cred-left"><span class="login-val">viewer1</span><span class="pass-val">/ viewer123</span></div>
+        <span class="role-tag">Viewer</span>
       </div>
     </div>
 
-    <div class="db-note">
-      <strong><i class="fa-solid fa-database"></i> Oracle DB Mode</strong>
-      Running with mock data. Connect to Oracle 19c+ by setting <code>USE_MOCK_DATA = false</code>
-      and configuring <code>DB_DSN / DB_USER / DB_PASS</code> in <code>_common.php</code>.
-      Schema: <code>schema_oracle.sql</code>.
+    <div class="db-note" style="background:<?= $mode_bg ?>;color:<?= $mode_color ?>">
+      <strong><i class="fa-solid <?= $mode_icon ?>"></i><?= $mode_label ?> rejimi</strong>
+      <?= $mode_note ?>
     </div>
   </div>
 </div>

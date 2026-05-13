@@ -267,10 +267,11 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
         <i class="fa-solid fa-right-to-bracket"></i>&nbsp; Daxil ol
       </button>
       <div class="demo-box">
-        <h4><i class="fa-solid fa-flask"></i> Demo Məlumatları</h4>
+        <h4><i class="fa-solid fa-key"></i> Demo Etimadnamələri</h4>
         <div class="demo-cred"><span><code>admin</code> / <code>admin123</code></span><span class="role-tag">Administrator</span></div>
         <div class="demo-cred"><span><code>analyst</code> / <code>analyst123</code></span><span class="role-tag">Analyst</span></div>
         <div class="demo-cred"><span><code>manager</code> / <code>manager123</code></span><span class="role-tag">Partner Manager</span></div>
+        <div class="demo-cred"><span><code>viewer1</code> / <code>viewer123</code></span><span class="role-tag">Viewer</span></div>
       </div>
     </div>
   </div>
@@ -801,10 +802,13 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
 
 // ═══════════════════════ AUTH
 let currentRole = '';
+// Local fallback — used when Supabase is unavailable or not configured
 const USERS = {
-  admin:   {pass:'admin123',   name:'Əli Vəliyev',     role:'administrator',  initials:'ƏV', roleLabel:'Administrator'},
-  analyst: {pass:'analyst123', name:'Nigar Hüseynova',  role:'analyst',        initials:'NH', roleLabel:'Analyst'},
-  manager: {pass:'manager123', name:'Kənan Quliyev',    role:'manager',        initials:'KQ', roleLabel:'Partner Manager'},
+  admin:    {pass:'admin123',   name:'Əli Vəliyev',     role:'administrator', initials:'ƏV', roleLabel:'Administrator'},
+  analyst:  {pass:'analyst123', name:'Nigar Hüseynova',  role:'analyst',       initials:'NH', roleLabel:'Analyst'},
+  manager:  {pass:'manager123', name:'Kənan Quliyev',    role:'manager',       initials:'KQ', roleLabel:'Partner Manager'},
+  manager2: {pass:'manager123', name:'Tural Məmmədov',   role:'manager',       initials:'TM', roleLabel:'Partner Manager'},
+  viewer1:  {pass:'viewer123',  name:'Leyla Əliyeva',    role:'viewer',        initials:'LƏ', roleLabel:'Viewer'},
 };
 
 // ═══════════════════════ SYSTEM USERS (user management page)
@@ -947,17 +951,18 @@ function buildFeeStats(){
     pidsWithFp,partnersWithout,totalEst,avgTiers};
 }
 
-const MCC_DATA = [
-  {mcc:'5411', label:'Ərzaq mağazaları',          cnt:28451, vol:315000},
-  {mcc:'5812', label:'Restoranlar və kafelər',     cnt:21302, vol:148000},
-  {mcc:'5732', label:'Elektronika',                cnt: 8920, vol:221000},
-  {mcc:'5541', label:'Yanacaqdoldurma stansiyaları',cnt:15673,vol:102000},
-  {mcc:'4814', label:'Telekommunikasiya',          cnt: 9840, vol: 58000},
-  {mcc:'7011', label:'Otellər',                   cnt: 3210, vol: 89000},
-  {mcc:'5999', label:'Digər pərakəndə',            cnt:12804, vol: 76000},
+// MCC and country data — let so loadData() can replace with live Supabase rows
+let MCC_DATA = [
+  {mcc:'5411', label:'Ərzaq mağazaları',           cnt:28451, vol:315000},
+  {mcc:'5812', label:'Restoranlar və kafelər',      cnt:21302, vol:148000},
+  {mcc:'5732', label:'Elektronika',                 cnt: 8920, vol:221000},
+  {mcc:'5541', label:'Yanacaqdoldurma stansiyaları',cnt:15673, vol:102000},
+  {mcc:'4814', label:'Telekommunikasiya',           cnt: 9840, vol: 58000},
+  {mcc:'7011', label:'Otellər',                    cnt: 3210, vol: 89000},
+  {mcc:'5999', label:'Digər pərakəndə',             cnt:12804, vol: 76000},
 ];
 
-const COUNTRY_DATA = [
+let COUNTRY_DATA = [
   {code:'AZ',flag:'🇦🇿',name:'Azərbaycan',cnt:68204,vol:784000},
   {code:'TR',flag:'🇹🇷',name:'Türkiyə',   cnt:12340,vol:103000},
   {code:'GE',flag:'🇬🇪',name:'Gürcüstan', cnt: 5820,vol: 42000},
@@ -1018,6 +1023,14 @@ function feePackageFromDb(r){
     effective_from:r.effective_from||'',effective_to:r.effective_to||'',
     tiers:Array.isArray(r.tiers)?r.tiers:(typeof r.tiers==='string'?JSON.parse(r.tiers):[])};
 }
+// mcc_data → MCC_DATA format: {mcc, label, cnt, vol}
+function mccFromDb(r){
+  return{mcc:r.mcc||'',label:r.label||'',cnt:Number(r.txn_count)||0,vol:parseFloat(r.txn_volume)||0};
+}
+// country_data → COUNTRY_DATA format: {code, name, flag, cnt, vol}
+function countryFromDb(r){
+  return{code:r.code||'',name:r.name||'',flag:r.flag||'',cnt:Number(r.txn_count)||0,vol:parseFloat(r.txn_volume)||0};
+}
 
 // ── Load all data from Supabase ──
 async function loadData(){
@@ -1060,6 +1073,22 @@ async function loadData(){
       if(!FEE_PACKAGES[pid]) FEE_PACKAGES[pid]=[];
       FEE_PACKAGES[pid].push(feePackageFromDb(fp));
     });
+
+    // mcc_data — optional: table may not exist yet (migration v3 not run)
+    try{
+      const mccRows=await sb('GET','mcc_data',null,'?order=txn_volume.desc')||[];
+      if(mccRows.length) MCC_DATA=mccRows.map(mccFromDb);
+    }catch(e){
+      console.warn('mcc_data not found, using defaults:',e.message);
+    }
+
+    // country_data — optional: table may not exist yet (migration v3 not run)
+    try{
+      const cntryRows=await sb('GET','country_data',null,'?order=txn_volume.desc')||[];
+      if(cntryRows.length) COUNTRY_DATA=cntryRows.map(countryFromDb);
+    }catch(e){
+      console.warn('country_data not found, using defaults:',e.message);
+    }
 
     showSyncBadge('Sinxronizasiya: OK','#2e7d32');
   }catch(e){
@@ -1155,15 +1184,44 @@ function showToast(msg,ok=true){
 }
 
 // ═══════════════════════ AUTH
-function doLogin(){
+async function doLogin(){
   const u=document.getElementById('loginUser').value.trim();
   const p=document.getElementById('loginPass').value;
-  const usr=USERS[u];
-  if(usr&&usr.pass===p){
+
+  let usr=null;
+
+  // ── 1. Try Supabase sys_users first ──────────────────────────────────────
+  if(sbOn()){
+    try{
+      const rows=await sb('GET','sys_users',null,
+        `?login=eq.${encodeURIComponent(u)}&password=eq.${encodeURIComponent(p)}&status=eq.active&limit=1`);
+      if(rows&&rows.length){
+        const r=rows[0];
+        const role=(r.role||'viewer').toLowerCase();
+        const name=r.name||u;
+        // Build initials from first letters of each word (max 2)
+        const initials=name.split(/\s+/).map(w=>w[0]||'').join('').substring(0,2).toUpperCase();
+        const roleLabels={administrator:'Administrator',manager:'Partner Manager',analyst:'Analyst',viewer:'Viewer'};
+        usr={pass:p,name,role,initials,roleLabel:roleLabels[role]||role};
+      }
+    }catch(e){
+      // Supabase unavailable — fall through to local USERS
+      console.warn('Supabase auth failed, trying local USERS:',e.message);
+    }
+  }
+
+  // ── 2. Fallback: hardcoded USERS object ──────────────────────────────────
+  if(!usr){
+    const local=USERS[u];
+    if(local&&local.pass===p) usr=local;
+  }
+
+  // ── 3. Apply result ───────────────────────────────────────────────────────
+  if(usr){
     currentRole=usr.role;
     document.getElementById('loginError').style.display='none';
     document.getElementById('userName').textContent=usr.name;
-    document.getElementById('userRole').textContent=usr.roleLabel;
+    document.getElementById('userRole').textContent=usr.roleLabel||usr.role;
     document.getElementById('userAvatar').textContent=usr.initials;
     // Show users nav for admin only
     document.getElementById('navUsers').style.display=
