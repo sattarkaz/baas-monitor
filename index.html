@@ -1,0 +1,2552 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BaaS Monitor — BaaS Tərəfdaş Monitoring Sistemi</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;font-size:14px;background:#f0f4f8;color:#1a2332}
+.screen{display:none}.screen.active{display:flex}
+
+/* LOGIN */
+#loginScreen{min-height:100vh;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#0a1628 0%,#0f1e3c 55%,#162447 100%);padding:24px}
+.login-box{width:100%;max-width:440px}
+.login-brand{text-align:center;margin-bottom:28px}
+.brand-logo{width:60px;height:60px;background:linear-gradient(135deg,#009688,#00695c);
+  border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+.brand-logo i{color:#fff;font-size:26px}
+.brand-name{color:#fff;font-size:22px;font-weight:700}
+.brand-sub{color:#6b8aad;font-size:13px;margin-top:4px}
+.login-card{background:#fff;border-radius:16px;padding:34px;box-shadow:0 24px 60px rgba(0,0,0,.4)}
+.login-card h2{font-size:20px;font-weight:700;color:#1a2332;margin-bottom:5px}
+.login-card .sub{font-size:13px;color:#64748b;margin-bottom:24px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.input-wrap{position:relative}
+.input-wrap i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:14px}
+.input-wrap input{width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:10px 14px 10px 36px;font-size:14px;color:#1a2332;font-family:inherit;outline:none;transition:border-color .18s}
+.input-wrap input:focus{border-color:#009688;box-shadow:0 0 0 3px rgba(0,150,136,.12)}
+.login-error{background:#fce4ec;color:#c62828;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.btn-login{width:100%;background:linear-gradient(135deg,#009688,#00695c);color:#fff;border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .18s;margin-top:2px}
+.btn-login:hover{opacity:.9}
+
+/* APP SHELL */
+#appScreen{min-height:100vh;flex-direction:row;width:100%}
+.sidebar{width:240px;min-height:100vh;background:#0f1e3c;display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:100}
+.sidebar-brand{padding:18px 20px 14px;border-bottom:1px solid rgba(255,255,255,.08)}
+.b-logo{width:36px;height:36px;background:linear-gradient(135deg,#009688,#00695c);border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+.b-logo i{color:#fff;font-size:16px}
+.b-name{color:#fff;font-size:15px;font-weight:700}
+.b-sub{color:#6b8aad;font-size:11px;margin-top:2px}
+.sidebar-nav{flex:1;padding:10px 0}
+.nav-item{display:flex;align-items:center;gap:12px;padding:11px 20px;color:#8facc8;text-decoration:none;font-size:13px;font-weight:500;transition:all .18s;cursor:pointer;border-right:3px solid transparent}
+.nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav-item.active{background:rgba(0,150,136,.18);color:#4dd0c4;border-right-color:#009688}
+.nav-item i{width:18px;text-align:center;font-size:14px}
+.sidebar-footer{padding:14px 20px;border-top:1px solid rgba(255,255,255,.08)}
+.user-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.u-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#009688,#00695c);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0}
+.u-name{color:#c8d8ea;font-size:12px;font-weight:600}
+.u-role{color:#6b8aad;font-size:11px}
+.logout-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:7px;background:rgba(255,255,255,.06);color:#8facc8;border:none;cursor:pointer;border-radius:6px;font-size:12px;font-family:inherit;width:100%;transition:all .18s}
+.logout-btn:hover{background:rgba(229,57,53,.2);color:#ef9a9a}
+
+/* MAIN */
+.main-area{margin-left:240px;flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:#fff;border-bottom:1px solid #e2e8f0;padding:0 28px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.topbar-title{font-size:17px;font-weight:700;color:#1a2332}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.sync-pill{background:#e0f2f1;color:#00695c;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600}
+
+/* PAGES */
+.page{display:none;padding:24px 28px;flex:1}
+.page.active{display:block}
+
+/* KPI CARDS */
+.kpi-grid{display:grid;gap:14px;margin-bottom:20px}
+.kpi-grid-6{grid-template-columns:repeat(6,1fr)}
+.kpi-grid-4{grid-template-columns:repeat(4,1fr)}
+.kpi-grid-3{grid-template-columns:repeat(3,1fr)}
+@media(max-width:1300px){.kpi-grid-6{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:1100px){.kpi-grid-4{grid-template-columns:repeat(2,1fr)}}
+.kpi-card{background:#fff;border-radius:12px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.07);border-left:4px solid #009688}
+.kpi-card.c-green{border-color:#43a047}.kpi-card.c-orange{border-color:#f57c00}
+.kpi-card.c-red{border-color:#e53935}.kpi-card.c-purple{border-color:#8e24aa}.kpi-card.c-teal{border-color:#00897b}
+.kpi-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:6px}
+.kpi-val{font-size:24px;font-weight:700;color:#1a2332;line-height:1}
+.kpi-sub{font-size:11px;color:#94a3b8;margin-top:4px}
+
+/* CHART CARDS */
+.chart-grid{display:grid;gap:14px;margin-bottom:20px}
+.chart-grid-2{grid-template-columns:1.7fr 1fr}
+@media(max-width:1100px){.chart-grid-2{grid-template-columns:1fr}}
+.chart-card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.chart-title{font-size:13px;font-weight:700;color:#334155;margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.chart-title i{color:#009688}
+.chart-title .src{margin-left:auto;font-size:10px;color:#94a3b8;font-weight:400}
+
+/* TABLE CARDS */
+.tcard{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);overflow:hidden;margin-bottom:20px}
+.tcard-hdr{padding:14px 18px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.tcard-hdr h3{font-size:13px;font-weight:700;color:#334155;display:flex;align-items:center;gap:7px}
+.sql-note{font-size:10px;font-weight:400;color:#94a3b8;margin-left:6px}
+table{width:100%;border-collapse:collapse}
+thead th{padding:9px 14px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;background:#f8fafc;border-bottom:1px solid #e2e8f0}
+tbody tr{border-bottom:1px solid #f1f5f9;transition:background .12s}
+tbody tr:hover{background:#f8fafc}
+tbody tr:last-child{border-bottom:none}
+td{padding:11px 14px;font-size:13px;color:#334155;vertical-align:middle}
+td.r{text-align:right}td.mono{font-family:monospace;font-size:11px}
+
+/* BADGE */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
+.b-active{background:#e0f2f1;color:#00695c}.b-inactive{background:#fce4ec;color:#c62828}
+.b-exhausted{background:#fff3e0;color:#e65100}.b-closed{background:#f3e5f5;color:#6a1b9a}
+
+/* USAGE BAR */
+.ubar-wrap{height:6px;background:#e2e8f0;border-radius:4px;overflow:hidden;min-width:80px}
+.ubar{height:100%;border-radius:4px}
+.ubar.ok{background:linear-gradient(90deg,#43a047,#66bb6a)}
+.ubar.warn{background:linear-gradient(90deg,#f57c00,#ffb74d)}
+.ubar.danger{background:linear-gradient(90deg,#e53935,#ef5350)}
+.ubar-lbl{font-size:10px;color:#64748b;margin-top:2px;display:block}
+
+/* PKG CARDS */
+.pkg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:22px}
+.pkg-card{background:#fff;border-radius:10px;padding:15px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.pkg-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.pkg-pname{font-size:12px;font-weight:700;color:#334155}
+.pkg-meta{font-size:10px;color:#94a3b8;margin-top:1px}
+.pkg-stats{display:flex;justify-content:space-between;margin-bottom:7px;font-size:12px}
+
+/* FILTER BAR */
+.filter-bar{background:#fff;border-radius:12px;padding:14px 18px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:18px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg label{font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px}
+.fg select,.fg input[type=date]{border:1.5px solid #e2e8f0;border-radius:7px;padding:7px 10px;font-size:12px;color:#334155;background:#fff;outline:none;font-family:inherit;min-width:140px;cursor:pointer}
+.fg select:focus,.fg input:focus{border-color:#009688;box-shadow:0 0 0 3px rgba(0,150,136,.12)}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .18s;font-family:inherit;text-decoration:none}
+.btn-primary{background:#009688;color:#fff}.btn-primary:hover{background:#00695c}
+.btn-success{background:#43a047;color:#fff}.btn-success:hover{background:#2e7d32}
+.btn-warning{background:#f57c00;color:#fff}.btn-warning:hover{background:#e65100}
+.btn-danger{background:#e53935;color:#fff}.btn-danger:hover{background:#c62828}
+.btn-outline{background:#fff;color:#334155;border:1.5px solid #e2e8f0}.btn-outline:hover{background:#f8fafc}
+.btn-sm{padding:4px 10px;font-size:11px}
+
+/* NOTICE */
+.notice{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border-radius:8px;margin-bottom:16px;font-size:12px}
+.notice.info{background:#e0f2f1;color:#004d40}
+.notice.warn{background:#fff3e0;color:#bf360c}
+.notice a{color:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
+
+/* SHARE BAR */
+.share-bar-wrap{height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden}
+.share-bar{height:100%;border-radius:3px}
+
+/* ROLE BADGES */
+.rb{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
+.rb-administrator{background:#fce4ec;color:#c62828}
+.rb-manager{background:#e8f5e9;color:#2e7d32}
+.rb-analyst{background:#e3f2fd;color:#1565c0}
+.rb-viewer{background:#f3e5f5;color:#6a1b9a}
+
+/* PERMISSIONS MATRIX */
+.perm-table th,.perm-table td{padding:8px 12px;text-align:center;font-size:12px}
+.perm-table th:first-child,.perm-table td:first-child{text-align:left}
+.perm-yes{color:#2e7d32;font-size:15px}.perm-no{color:#bdbdbd;font-size:15px}
+
+/* DOC SECTION */
+.doc-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:#f8fafc;
+  border-radius:8px;margin-bottom:6px;border:1px solid #e2e8f0}
+.doc-icon{font-size:18px;width:22px;text-align:center;flex-shrink:0}
+.doc-info{flex:1;min-width:0}
+.doc-name{font-size:12px;font-weight:600;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.doc-meta{font-size:10px;color:#94a3b8;margin-top:1px}
+.upload-area{border:2px dashed #cbd5e1;border-radius:8px;padding:16px;text-align:center;
+  cursor:pointer;color:#64748b;font-size:12px;transition:border-color .18s;margin-bottom:12px}
+.upload-area:hover{border-color:#009688;color:#009688}
+
+/* EXPORT BUTTONS ROW */
+.export-row{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+
+/* USER STATUS */
+.b-blocked{background:#eceff1;color:#546e7a}
+
+/* FEE PACKAGES */
+.fp-card{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:10px;border-left:3px solid #1565c0}
+.fp-card-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.fp-name{font-size:13px;font-weight:700;color:#1a2332}.fp-period{font-size:10px;color:#94a3b8;margin-top:2px}
+.tiers-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+.tiers-tbl th{padding:5px 8px;text-align:left;font-size:10px;color:#64748b;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.tiers-tbl td{padding:6px 8px;border-bottom:1px solid #f1f5f9}.tiers-tbl tr:last-child td{border-bottom:none}
+.tier-inp{border:1.5px solid #e2e8f0;border-radius:6px;padding:4px 7px;font-size:12px;width:100%;font-family:inherit;outline:none;background:#fff}
+.tier-inp:focus{border-color:#009688;box-shadow:0 0 0 2px rgba(0,150,136,.1)}
+
+/* DWH NOTE */
+.dwh-note{background:#e0f2f1;border-radius:10px;padding:14px 18px;font-size:12px;color:#004d40;margin-bottom:20px;line-height:1.7}
+code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
+
+/* ═══ MODALS ═══ */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:14px;width:820px;max-width:100%;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.28)}
+.modal.sm{width:520px}
+.modal-hdr{padding:18px 22px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1}
+.modal-hdr h2{font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.modal-hdr h2 i{color:#009688}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#64748b;padding:4px;line-height:1}
+.modal-body{padding:22px}
+.modal-footer{padding:14px 22px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:10px;background:#f8fafc;border-radius:0 0 14px 14px;position:sticky;bottom:0}
+
+/* FORM */
+.form-grid{display:grid;gap:14px}
+.form-grid-2{grid-template-columns:1fr 1fr}
+.form-grid-3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:600px){.form-grid-2,.form-grid-3{grid-template-columns:1fr}}
+.form-field{display:flex;flex-direction:column;gap:5px}
+.form-field label{font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.4px}
+.form-field label span.req{color:#e53935;margin-left:2px}
+.form-field input,.form-field select,.form-field textarea{border:1.5px solid #e2e8f0;border-radius:8px;padding:9px 12px;font-size:13px;color:#1a2332;font-family:inherit;outline:none;transition:border-color .18s;background:#fff}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:#009688;box-shadow:0 0 0 3px rgba(0,150,136,.12)}
+.form-field textarea{resize:vertical;min-height:70px}
+.form-section{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid #f1f5f9}
+.form-section:first-child{margin-top:0}
+
+/* MINI TILES */
+.mini-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.mini-tile{border-radius:8px;padding:13px;text-align:center}
+.mini-tile .val{font-size:20px;font-weight:700}
+.mini-tile .lbl{font-size:10px;margin-top:2px}
+.mt-teal{background:#e0f2f1;color:#004d40}.mt-teal .val{color:#009688}
+.mt-green{background:#e8f5e9;color:#1b5e20}.mt-green .val{color:#2e7d32}
+.mt-orange{background:#fff3e0;color:#bf360c}.mt-orange .val{color:#e65100}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════ LOGIN -->
+<div id="loginScreen" class="screen active">
+  <div class="login-box">
+    <div class="login-brand">
+      <div class="brand-logo"><i class="fa-solid fa-building-columns"></i></div>
+      <div class="brand-name">BaaS Monitor</div>
+      <div class="brand-sub">BaaS Tərəfdaş Monitoring Sistemi · v2.0</div>
+    </div>
+    <div class="login-card">
+      <h2>Daxil ol / Sign In</h2>
+      <p class="sub">Monitoring platformasına daxil olmaq üçün məlumatlarınızı daxil edin.</p>
+      <div class="login-error" id="loginError" style="display:none">
+        <i class="fa-solid fa-triangle-exclamation"></i><span>Yanlış istifadəçi adı və ya şifrə.</span>
+      </div>
+      <div class="form-group">
+        <label>İstifadəçi adı / Username</label>
+        <div class="input-wrap"><i class="fa-solid fa-user"></i>
+          <input type="text" id="loginUser" placeholder="admin" autocomplete="off"></div>
+      </div>
+      <div class="form-group">
+        <label>Şifrə / Password</label>
+        <div class="input-wrap"><i class="fa-solid fa-lock"></i>
+          <input type="password" id="loginPass" placeholder="••••••••"></div>
+      </div>
+      <button class="btn-login" onclick="doLogin()">
+        <i class="fa-solid fa-right-to-bracket"></i>&nbsp; Daxil ol
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════ APP -->
+<div id="appScreen" class="screen">
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <div class="b-logo"><i class="fa-solid fa-building-columns"></i></div>
+      <div class="b-name">BaaS Monitor</div>
+      <div class="b-sub">Partner Monitoring</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">
+        <i class="fa-solid fa-gauge-high"></i> Dashboard
+      </div>
+      <div class="nav-item" data-page="partners" onclick="showPage('partners')">
+        <i class="fa-solid fa-handshake"></i> Tərəfdaşlar &amp; Paketlər
+      </div>
+      <div class="nav-item" data-page="transactions" onclick="showPage('transactions')">
+        <i class="fa-solid fa-chart-line"></i> Əməliyyatlar
+      </div>
+      <div class="nav-item" data-page="users" id="navUsers" style="display:none" onclick="showPage('users')">
+        <i class="fa-solid fa-users-gear"></i> İstifadəçilər &amp; Rollar
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="u-avatar" id="userAvatar">AV</div>
+        <div><div class="u-name" id="userName">Əli Vəliyev</div>
+          <div class="u-role" id="userRole">Administrator</div></div>
+      </div>
+      <button class="logout-btn" onclick="doLogout()">
+        <i class="fa-solid fa-right-from-bracket"></i> Çıxış
+      </button>
+      <button class="logout-btn" style="margin-top:6px;color:#ef9a9a" onclick="resetAllData()"
+        title="Bütün məlumatları sıfırla (demo vəziyyətinə qayıt)">
+        <i class="fa-solid fa-rotate-left"></i> Məlumatları Sıfırla
+      </button>
+    </div>
+  </div>
+
+  <div class="main-area">
+    <div class="topbar">
+      <div class="topbar-title" id="topbarTitle">Dashboard</div>
+      <div class="topbar-right">
+        <span class="sync-pill"><i class="fa-solid fa-rotate"></i> <span id="syncBadge">Yüklənir…</span></span>
+      </div>
+    </div>
+
+    <!-- ──── DASHBOARD ──── -->
+    <div id="page-dashboard" class="page active">
+      <div class="kpi-grid kpi-grid-6" id="dashKpis"></div>
+      <div class="notice warn" id="dashAlert" style="display:none">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <div id="dashAlertText"></div>
+      </div>
+      <div class="chart-grid chart-grid-2">
+        <div class="chart-card">
+          <div class="chart-title"><i class="fa-solid fa-chart-area"></i> Əməliyyat Həcmi — Son 30 Gün
+            <span class="src">transaction_daily_agg_cache</span></div>
+          <canvas id="trendChart" height="120"></canvas>
+        </div>
+        <div class="chart-card" style="display:flex;flex-direction:column">
+          <div class="chart-title"><i class="fa-solid fa-chart-pie"></i> Tərəfdaşlar üzrə Paylanma (30g)
+            <span class="src">v_partner_txn_summary_30d</span></div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center">
+            <canvas id="donutChart" style="max-height:200px;max-width:200px"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="tcard">
+        <div class="tcard-hdr">
+          <h3><i class="fa-solid fa-ranking-star" style="color:#f57c00"></i> Ən Yaxşı Tərəfdaşlar (30 gün)</h3>
+          <button class="btn btn-outline btn-sm" onclick="showPage('partners')">Hamısına bax</button>
+        </div>
+        <table id="dashPartnersTable"></table>
+      </div>
+      <div class="tcard">
+        <div class="tcard-hdr">
+          <h3><i class="fa-solid fa-layer-group" style="color:#009688"></i> Bütün Kart Paketləri — Cari Vəziyyət
+            <span class="sql-note">Oracle: SELECT cp.*, s.issued_cards, s.remaining_cards FROM card_packages cp JOIN package_usage_snapshot s ON …</span>
+          </h3>
+        </div>
+        <table id="allPackagesTable"></table>
+      </div>
+
+      <!-- ── FEE PACKAGES ANALYTICS ── -->
+      <div style="font-size:13px;font-weight:700;color:#1565c0;text-transform:uppercase;letter-spacing:.6px;margin:24px 0 12px;display:flex;align-items:center;gap:8px">
+        <i class="fa-solid fa-percent"></i> Komisyon &amp; Limit Paketləri — Analitika
+      </div>
+      <div class="kpi-grid kpi-grid-4" id="feeKpis" style="margin-bottom:18px"></div>
+      <div class="notice warn" id="feeAlert" style="display:none;margin-bottom:16px">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <div id="feeAlertText"></div>
+      </div>
+      <div class="chart-grid chart-grid-2" style="margin-bottom:18px">
+        <div class="tcard" style="margin-bottom:0">
+          <div class="tcard-hdr">
+            <h3><i class="fa-solid fa-table-list" style="color:#1565c0"></i> Komisyon Paketləri Xülasəsi</h3>
+          </div>
+          <table id="feePackagesTable"></table>
+        </div>
+        <div class="chart-card" style="display:flex;flex-direction:column">
+          <div class="chart-title"><i class="fa-solid fa-chart-bar" style="color:#1565c0"></i> Komisyon Dərəcəsi (Tier 1 — baza dərəcə)</div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center">
+            <canvas id="feeRateChart" style="max-height:220px"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="tcard" style="margin-bottom:0">
+        <div class="tcard-hdr">
+          <h3><i class="fa-solid fa-coins" style="color:#1565c0"></i> Tərəfdaş Bazasında Komisyon Hesablaması (30g Həcmə Görə)</h3>
+          <span style="font-size:11px;color:#94a3b8;font-weight:400">Hesablamalar 30 günlük əməliyyat həcminə və aktiv komisyon paketinin tier strukturuna əsaslanır</span>
+        </div>
+        <table id="feeEstimateTable"></table>
+      </div>
+    </div>
+
+    <!-- ──── PARTNERS ──── -->
+    <div id="page-partners" class="page">
+      <div class="kpi-grid kpi-grid-3" id="partnerKpis" style="margin-bottom:18px"></div>
+      <div class="tcard">
+        <div class="tcard-hdr">
+          <h3><i class="fa-solid fa-handshake" style="color:#009688"></i> BaaS Tərəfdaşları
+            <span class="sql-note">Oracle: SELECT … FROM partners p LEFT JOIN card_packages … LEFT JOIN package_usage_snapshot …</span>
+          </h3>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-success" onclick="openPartnerForm()">
+              <i class="fa-solid fa-plus"></i> Yeni Tərəfdaş
+            </button>
+          </div>
+        </div>
+        <table id="partnersTable"></table>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px">
+        <i class="fa-solid fa-layer-group"></i> Paket İstifadəsi / Package Utilisation
+      </div>
+      <div class="pkg-grid" id="pkgCardsGrid"></div>
+    </div>
+
+    <!-- ──── TRANSACTIONS ──── -->
+    <div id="page-transactions" class="page">
+      <div class="notice info">
+        <i class="fa-solid fa-circle-info"></i>
+        <div>Gündəlik aqreqatlar <strong>transaction_daily_agg_cache</strong>-dən.
+          MCC/Ölkə məlumatları DWH görünüşlərindən
+          (<strong>dwh_transaction_mcc_agg</strong>, <strong>dwh_transaction_country_agg</strong>).
+        </div>
+      </div>
+      <div class="filter-bar">
+        <div class="fg"><label><i class="fa-solid fa-handshake"></i> Tərəfdaş</label>
+          <select id="fPartner"><option value="0">Hamısı</option></select></div>
+        <div class="fg"><label><i class="fa-solid fa-calendar-days"></i> Başlanğıc</label>
+          <input type="date" id="fFrom"></div>
+        <div class="fg"><label>&nbsp;</label><input type="date" id="fTo"></div>
+        <div class="fg"><label><i class="fa-solid fa-coins"></i> Valyuta</label>
+          <select id="fCurrency">
+            <option value="AZN">AZN — Manat</option>
+            <option value="USD">USD — Dollar</option>
+            <option value="EUR">EUR — Avro</option>
+            <option value="TRY">TRY — Türk lirəsi</option>
+            <option value="RUB">RUB — Rubl</option>
+          </select></div>
+        <div class="fg"><label><i class="fa-solid fa-tag"></i> MCC</label>
+          <select id="fMcc"><option value="">Bütün MCC</option></select></div>
+        <div class="fg"><label><i class="fa-solid fa-earth-europe"></i> Ölkə</label>
+          <select id="fCountry"><option value="">Bütün Ölkələr</option></select></div>
+        <div class="fg"><label>&nbsp;</label>
+          <button class="btn btn-primary" onclick="applyFilters()"><i class="fa-solid fa-filter"></i> Tətbiq et</button></div>
+        <div class="fg"><label>&nbsp;</label>
+          <button class="btn btn-outline" onclick="resetFilters()"><i class="fa-solid fa-rotate-left"></i> Sıfırla</button></div>
+      </div>
+      <div class="kpi-grid kpi-grid-3" id="txnKpis" style="margin-bottom:18px"></div>
+      <div class="chart-card" style="margin-bottom:18px">
+        <div class="chart-title"><i class="fa-solid fa-chart-bar"></i>
+          <span id="barChartTitle">Gündəlik Əməliyyat Həcmi — Bütün Tərəfdaşlar</span>
+          <span class="src">Oracle: SELECT agg_date, SUM(transaction_volume) FROM transaction_daily_agg_cache WHERE … GROUP BY agg_date</span>
+        </div>
+        <canvas id="barChart" height="90"></canvas>
+      </div>
+      <div class="chart-grid chart-grid-2">
+        <div class="tcard" style="margin-bottom:0">
+          <div class="tcard-hdr"><h3><i class="fa-solid fa-tag" style="color:#8e24aa"></i> MCC Bölgüsü
+            <span class="sql-note">Oracle: dwh_transaction_mcc_agg</span></h3></div>
+          <table id="mccTable"></table>
+        </div>
+        <div class="tcard" style="margin-bottom:0">
+          <div class="tcard-hdr"><h3><i class="fa-solid fa-earth-europe" style="color:#00897b"></i> Ölkə Bölgüsü
+            <span class="sql-note">Oracle: dwh_transaction_country_agg</span></h3></div>
+          <table id="countryTable"></table>
+        </div>
+      </div>
+      <div class="tcard" style="margin-top:18px">
+        <div class="tcard-hdr"><h3><i class="fa-solid fa-table" style="color:#009688"></i> Tərəfdaş üzrə Xülasə
+          <span class="sql-note">Oracle: SELECT p.partner_name, SUM(t.transaction_volume) FROM transaction_daily_agg_cache t JOIN partners p … GROUP BY</span></h3></div>
+        <table id="partnerTxnTable"></table>
+      </div>
+      <div class="dwh-note">
+        <strong><i class="fa-solid fa-database"></i> Arxitektura Qeydi:</strong>
+        Gündəlik aqreqatlar <code>transaction_daily_agg_cache</code>-ə hər 1–3 saatda DWH-dən yüklənir.
+        Ətraflı əməliyyatlar (<code>dwh_transactions</code>) DWH-də saxlanılır — monitoring sistemində təkrarlanmır.
+      </div>
+    </div>
+    <!-- ──── USERS ──── -->
+    <div id="page-users" class="page">
+      <div class="kpi-grid kpi-grid-3" id="usersKpis" style="margin-bottom:18px"></div>
+      <div class="tcard" style="margin-bottom:18px">
+        <div class="tcard-hdr">
+          <h3><i class="fa-solid fa-users" style="color:#009688"></i> Sistem İstifadəçiləri</h3>
+          <button class="btn btn-success" onclick="openUserForm()">
+            <i class="fa-solid fa-plus"></i> Yeni İstifadəçi
+          </button>
+        </div>
+        <table id="usersTable"></table>
+      </div>
+      <div class="tcard">
+        <div class="tcard-hdr">
+          <h3><i class="fa-solid fa-shield-halved" style="color:#8e24aa"></i> Rol İcazələri Matrisi</h3>
+        </div>
+        <div style="padding:16px;overflow-x:auto">
+          <table class="perm-table" style="width:100%;border-collapse:collapse">
+            <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
+              <th>Rol</th>
+              <th>Dashboard</th><th>Tərəfdaşlar</th><th>Əməliyyatlar</th>
+              <th>İstifadəçilər</th><th>Sənəd İxracı</th><th>Redaktə</th>
+            </tr></thead>
+            <tbody id="rolesMatrixBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════ MODAL: Partner Detail -->
+<div class="modal-bg" id="partnerDetailModal" onclick="if(event.target===this)closeModal('partnerDetailModal')">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h2 id="detailModalTitle"><i class="fa-solid fa-magnifying-glass-chart"></i> Tərəfdaş Detalları</h2>
+      <button class="modal-close" onclick="closeModal('partnerDetailModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="detailModalBody"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════ MODAL: Add / Edit Partner -->
+<div class="modal-bg" id="partnerFormModal" onclick="if(event.target===this)closeModal('partnerFormModal')">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h2 id="partnerFormTitle"><i class="fa-solid fa-handshake"></i> Yeni Tərəfdaş</h2>
+      <button class="modal-close" onclick="closeModal('partnerFormModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="pf_id">
+      <div class="form-section">Əsas Məlumat</div>
+      <div class="form-grid form-grid-2">
+        <div class="form-field" style="grid-column:1/-1">
+          <label>Şirkətin Adı <span class="req">*</span></label>
+          <input type="text" id="pf_name" placeholder="məs. AzərFintech MMC">
+        </div>
+        <div class="form-field">
+          <label>Hüquqi Forma <span class="req">*</span></label>
+          <select id="pf_form">
+            <option>MMC</option><option>ASC</option><option>SC</option>
+            <option>QSC</option><option>FE</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>VÖEN <span class="req">*</span></label>
+          <input type="text" id="pf_voen" placeholder="10 rəqəmli VÖEN" maxlength="10">
+        </div>
+        <div class="form-field">
+          <label>Status <span class="req">*</span></label>
+          <select id="pf_status">
+            <option value="active">Aktiv</option>
+            <option value="inactive">Qeyri-aktiv</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Müqavilə Tarixi <span class="req">*</span></label>
+          <input type="date" id="pf_date">
+        </div>
+        <div class="form-field" style="grid-column:1/-1">
+          <label>Hüquqi Ünvan <span class="req">*</span></label>
+          <input type="text" id="pf_legal_address" placeholder="Şəhər, rayon, küçə, AZ0000">
+        </div>
+      </div>
+      <div class="form-section">İmzalayan Tərəf</div>
+      <div class="form-grid form-grid-2">
+        <div class="form-field">
+          <label>İmzalayanın Adı</label>
+          <input type="text" id="pf_signatory" placeholder="Ad Soyad">
+        </div>
+        <div class="form-field">
+          <label>Vəzifəsi</label>
+          <input type="text" id="pf_signatory_pos" placeholder="məs. Direktor">
+        </div>
+      </div>
+      <div class="form-section">Bank Rekvizitləri</div>
+      <div class="form-grid form-grid-2">
+        <div class="form-field">
+          <label>Bank Adı</label>
+          <input type="text" id="pf_bank_name" placeholder="məs. ABB Bank">
+        </div>
+        <div class="form-field">
+          <label>Bankın Kodu (MFO)</label>
+          <input type="text" id="pf_bank_code" placeholder="6 rəqəm" maxlength="6">
+        </div>
+        <div class="form-field" style="grid-column:1/-1">
+          <label>Hesab Nömrəsi (IBAN)</label>
+          <input type="text" id="pf_bank_account" placeholder="AZ00XXXX...">
+        </div>
+      </div>
+      <div class="form-section">Əlaqə &amp; İdarəetmə</div>
+      <div class="form-grid form-grid-2">
+        <div class="form-field">
+          <label>E-poçt</label>
+          <input type="email" id="pf_email" placeholder="contact@partner.az">
+        </div>
+        <div class="form-field">
+          <label>Telefon</label>
+          <input type="text" id="pf_phone" placeholder="+994 XX XXX XX XX">
+        </div>
+        <div class="form-field" style="grid-column:1/-1">
+          <label>Hesab Meneceri</label>
+          <input type="text" id="pf_mgr" placeholder="Tam adı">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('partnerFormModal')">Ləğv et</button>
+      <button class="btn btn-success" onclick="savePartner()">
+        <i class="fa-solid fa-floppy-disk"></i> Yadda saxla
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════ MODAL: Add Package -->
+<div class="modal-bg" id="packageFormModal" onclick="if(event.target===this)closeModal('packageFormModal')">
+  <div class="modal sm">
+    <div class="modal-hdr">
+      <h2><i class="fa-solid fa-box-open"></i> Kart Paketi Əlavə et</h2>
+      <button class="modal-close" onclick="closeModal('packageFormModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-section">Paket Məlumatı</div>
+      <div class="form-grid form-grid-1">
+        <div class="form-field">
+          <label>Tərəfdaş <span class="req">*</span></label>
+          <select id="pkgf_partner"></select>
+        </div>
+      </div>
+      <div class="form-grid form-grid-2" style="margin-top:14px">
+        <div class="form-field" style="grid-column:1/-1">
+          <label>Paket Həcmi (kart sayı) <span class="req">*</span></label>
+          <input type="number" id="pkgf_size" min="100" step="100" placeholder="məs. 5000">
+        </div>
+        <div class="form-field">
+          <label>Başlama Tarixi <span class="req">*</span></label>
+          <input type="date" id="pkgf_from">
+        </div>
+        <div class="form-field">
+          <label>Bitmə Tarixi <span class="req">*</span></label>
+          <input type="date" id="pkgf_to">
+        </div>
+        <div class="form-field" style="grid-column:1/-1">
+          <label>Qeydlər</label>
+          <textarea id="pkgf_notes" placeholder="İstəyə bağlı şərh..."></textarea>
+        </div>
+      </div>
+      <div style="background:#e0f2f1;border-radius:8px;padding:12px 14px;font-size:12px;color:#004d40;margin-top:14px">
+        <i class="fa-solid fa-circle-info"></i>
+        Yeni paket üçün ilkin istifadə məlumatları 0 olacaq.
+        Həqiqi saylar DWH sinxronizasiyasından yüklənəcək.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('packageFormModal')">Ləğv et</button>
+      <button class="btn btn-success" onclick="savePackage()">
+        <i class="fa-solid fa-floppy-disk"></i> Paketi Əlavə et
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════ MODAL: User Form -->
+<div class="modal-bg" id="userFormModal" onclick="if(event.target===this)closeModal('userFormModal')">
+  <div class="modal sm">
+    <div class="modal-hdr">
+      <h2 id="userFormTitle"><i class="fa-solid fa-user-plus"></i> Yeni İstifadəçi</h2>
+      <button class="modal-close" onclick="closeModal('userFormModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="uf_id">
+      <div class="form-section">Şəxsi Məlumat</div>
+      <div class="form-grid form-grid-2">
+        <div class="form-field" style="grid-column:1/-1">
+          <label>Tam Ad <span class="req">*</span></label>
+          <input type="text" id="uf_name" placeholder="Ad Soyad">
+        </div>
+        <div class="form-field">
+          <label>Login <span class="req">*</span></label>
+          <input type="text" id="uf_login" placeholder="latın, boşluqsuz" autocomplete="off">
+        </div>
+        <div class="form-field">
+          <label>E-poçt <span class="req">*</span></label>
+          <input type="email" id="uf_email" placeholder="ad@bank.az">
+        </div>
+      </div>
+      <div class="form-section">Rol &amp; Status</div>
+      <div class="form-grid form-grid-2">
+        <div class="form-field">
+          <label>Rol <span class="req">*</span></label>
+          <select id="uf_role">
+            <option value="administrator">Administrator</option>
+            <option value="manager">Partner Manager</option>
+            <option value="analyst">Analyst</option>
+            <option value="viewer">Viewer</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Status</label>
+          <select id="uf_status">
+            <option value="active">Aktiv</option>
+            <option value="inactive">Qeyri-aktiv</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-section" id="uf_pass_section">Şifrə</div>
+      <div class="form-grid form-grid-2" id="uf_pass_grid">
+        <div class="form-field">
+          <label>Şifrə <span class="req" id="uf_pass_req">*</span></label>
+          <input type="password" id="uf_pass" autocomplete="new-password" placeholder="min. 6 simvol">
+        </div>
+        <div class="form-field">
+          <label>Şifrəni Təsdiqlə <span class="req" id="uf_pass2_req">*</span></label>
+          <input type="password" id="uf_pass2" placeholder="Yenidən daxil edin">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('userFormModal')">Ləğv et</button>
+      <button class="btn btn-success" onclick="saveUser()">
+        <i class="fa-solid fa-floppy-disk"></i> Yadda saxla
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════ MODAL: Fee Package Form -->
+<div class="modal-bg" id="feePackageFormModal" onclick="if(event.target===this)closeModal('feePackageFormModal')">
+  <div class="modal" style="width:680px">
+    <div class="modal-hdr">
+      <h2 id="fpFormTitle"><i class="fa-solid fa-percent" style="color:#1565c0"></i> Yeni Komisyon Paketi</h2>
+      <button class="modal-close" onclick="closeModal('feePackageFormModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="fpf_id">
+      <input type="hidden" id="fpf_pid">
+      <div class="form-section">Əsas Məlumat</div>
+      <div class="form-grid form-grid-2">
+        <div class="form-field" style="grid-column:1/-1">
+          <label>Paket Adı <span class="req">*</span></label>
+          <input type="text" id="fpf_name" placeholder="məs. Standart Tarif 2025">
+        </div>
+        <div class="form-field">
+          <label>Status</label>
+          <select id="fpf_status">
+            <option value="active">Aktiv</option>
+            <option value="inactive">Qeyri-aktiv</option>
+          </select>
+        </div>
+        <div class="form-field"><!-- spacer --></div>
+        <div class="form-field">
+          <label>Qüvvəyə minmə tarixi</label>
+          <input type="date" id="fpf_from">
+        </div>
+        <div class="form-field">
+          <label>Bitmə tarixi</label>
+          <input type="date" id="fpf_to">
+        </div>
+      </div>
+      <div class="form-section" style="margin-top:18px">Komisyon Cədvəli (Tier-lər)</div>
+      <div style="font-size:11px;color:#64748b;margin-bottom:10px">
+        <i class="fa-solid fa-circle-info"></i>
+        Sonuncu sıranın "Həddə qədər" xanasını boş buraxın — limitsiz hesab ediləcək.
+      </div>
+      <table class="tiers-tbl" style="margin-bottom:10px">
+        <thead>
+          <tr>
+            <th style="min-width:130px">Başlanğıc (₼)</th>
+            <th style="min-width:130px">Həddə qədər (₼)</th>
+            <th style="min-width:110px">Komisyon (%)</th>
+            <th style="width:40px"></th>
+          </tr>
+        </thead>
+        <tbody id="fpTiersBody"></tbody>
+      </table>
+      <button class="btn btn-outline btn-sm" onclick="addFpTierRow()">
+        <i class="fa-solid fa-plus"></i> Sıra əlavə et
+      </button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('feePackageFormModal')">Ləğv et</button>
+      <button class="btn btn-success" onclick="saveFeePackage()">
+        <i class="fa-solid fa-floppy-disk"></i> Yadda saxla
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════ TOAST -->
+<div id="toast" style="position:fixed;bottom:24px;right:24px;z-index:999;display:none">
+  <div style="background:#1a2332;color:#fff;padding:12px 18px;border-radius:10px;
+    font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.3);display:flex;align-items:center;gap:10px">
+    <i id="toastIcon" class="fa-solid fa-check-circle" style="color:#4dd0c4"></i>
+    <span id="toastText"></span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════ JS -->
+<script>
+'use strict';
+
+// ═══════════════════════ AUTH
+let currentRole = '';
+// Local fallback — used when Supabase is unavailable or not configured
+const USERS = {};  // demo-only fallback removed; auth happens via Supabase sys_users
+
+// ═══════════════════════ SYSTEM USERS (user management page)
+let _nextUserId = 6;
+let SYS_USERS = [];  // populated from Supabase sys_users in loadData()
+const SYS_ROLES = [
+  {id:'administrator',label:'Administrator',    desc:'Tam icazə',
+   perms:{dashboard:true,partners:true,transactions:true,users:true,export:true,edit:true}},
+  {id:'manager',      label:'Partner Manager', desc:'Tərəfdaşlar + ixrac',
+   perms:{dashboard:true,partners:true,transactions:true,users:false,export:true,edit:true}},
+  {id:'analyst',      label:'Analyst',         desc:'Oxuma + ixrac',
+   perms:{dashboard:true,partners:true,transactions:true,users:false,export:true,edit:false}},
+  {id:'viewer',       label:'Viewer',          desc:'Yalnız oxuma',
+   perms:{dashboard:true,partners:true,transactions:false,users:false,export:false,edit:false}},
+];
+
+// ═══════════════════════ DATA STORE (mutable — supports add/edit)
+let _nextPid = 7;
+let _nextPkgId = 11;
+let _nextDocId = 10;
+
+let PARTNERS = [];  // populated from Supabase partners in loadData()
+
+// Partner documents — keyed by partner id
+let PARTNER_DOCS = {};  // populated from Supabase partner_docs in loadData()
+
+// Fee / commission packages — keyed by partner id
+let _nextFpId = 5;
+let FEE_PACKAGES = {};  // populated from Supabase fee_packages in loadData() (optional table)
+
+let PACKAGES = [];  // populated from Supabase packages in loadData()
+
+// Per-partner transaction summary (AZN — Azerbaijani manat volumes)
+// Oracle: SELECT p.partner_name, SUM(t.transaction_volume) FROM transaction_daily_agg_cache t …
+function buildSummary() {
+  // Per-partner txn volumes intentionally empty — no transactions table in Supabase yet.
+  const base = {};
+  const s = {};
+  PARTNERS.forEach(p => {
+    const pkgs   = PACKAGES.filter(pk=>pk.pid===p.id);
+    const active = pkgs.filter(pk=>pk.status==='active');
+    const size   = pkgs.reduce((a,pk)=>a+pk.size,0);
+    const issued = pkgs.reduce((a,pk)=>a+pk.issued,0);
+    const rem    = pkgs.reduce((a,pk)=>a+pk.rem,0);
+    const pct    = size>0 ? Math.round(issued/size*1000)/10 : 0;
+    const b      = base[p.id]||{vol:0,cnt:0};
+    s[p.id] = {size, issued, rem, pct, vol:b.vol, cnt:b.cnt};
+  });
+  return s;
+}
+
+// Commission helpers
+function calcCommission(tiers, volume){
+  if(!tiers||!tiers.length||!volume) return{rate:0,commission:0,tier:null};
+  for(const t of tiers){
+    const lo=t.from||0;
+    const hi=(t.to===null||t.to===undefined)?Infinity:Number(t.to);
+    if(volume>=lo&&volume<=hi) return{rate:Number(t.rate),commission:volume*Number(t.rate)/100,tier:t};
+  }
+  const last=tiers[tiers.length-1];
+  return{rate:Number(last.rate),commission:volume*Number(last.rate)/100,tier:last};
+}
+
+function buildFeeStats(){
+  const allFps=Object.values(FEE_PACKAGES).flat();
+  const activeFps=allFps.filter(fp=>fp.status==='active');
+  const pidsWithFp=new Set(activeFps.map(fp=>fp.partner_id));
+  const activePartners=PARTNERS.filter(p=>p.status==='active');
+  const partnersWithout=activePartners.filter(p=>!pidsWithFp.has(p.id));
+  // Total estimated commission from 30d volumes
+  const sum=buildSummary();
+  let totalEst=0;
+  activePartners.forEach(p=>{
+    const vol=sum[p.id]?.vol||0;
+    const fps=(FEE_PACKAGES[p.id]||[]).filter(fp=>fp.status==='active');
+    if(fps.length&&vol>0){
+      const{commission}=calcCommission(fps[0].tiers,vol);
+      totalEst+=commission;
+    }
+  });
+  // Tier counts
+  const totalTiers=activeFps.reduce((s,fp)=>s+(fp.tiers?.length||0),0);
+  const avgTiers=activeFps.length?totalTiers/activeFps.length:0;
+  return{total:allFps.length,active:activeFps.length,
+    pidsWithFp,partnersWithout,totalEst,avgTiers};
+}
+
+// MCC and country data — let so loadData() can replace with live Supabase rows
+let MCC_DATA = [];  // populated from Supabase mcc_data in loadData()
+
+let COUNTRY_DATA = [];  // populated from Supabase country_data in loadData()
+
+// ═══════════════════════ SUPABASE CONFIG
+// ▶ supabase.com-da hesab açın → Yeni layihə → Settings → API
+// ▶ Aşağıdakı iki dəyəri öz layihənizin məlumatları ilə əvəz edin:
+const SUPABASE_URL = 'https://icakohbufchlabkiupme.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljYWtvaGJ1ZmNobGFia2l1cG1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1Nzg1OTUsImV4cCI6MjA5NDE1NDU5NX0.mzDEo117hBkPp9rx-sHXquBASNci8VZ7JzMpsME8NOI';
+
+const sbOn = ()=> SUPABASE_URL && SUPABASE_KEY;
+
+// Generic Supabase REST helper
+async function sb(method, table, body=null, query=''){
+  const url=`${SUPABASE_URL}/rest/v1/${table}${query}`;
+  const h={
+    'apikey':SUPABASE_KEY,
+    'Authorization':`Bearer ${SUPABASE_KEY}`,
+    'Content-Type':'application/json',
+  };
+  if(method==='POST'||method==='PATCH') h['Prefer']='return=representation';
+  const res=await fetch(url,{method,headers:h,body:body?JSON.stringify(body):undefined});
+  if(!res.ok){const t=await res.text();throw new Error(t);}
+  try{return await res.json();}catch{return null;}
+}
+
+// ── Field mappers (DB ↔ in-memory) ──
+// packages: DB uses partner_id/start_date/end_date, JS uses pid/from/to
+function pkgFromDb(r){
+  return{id:Number(r.id),pid:Number(r.partner_id),size:r.size,
+    from:r.start_date,to:r.end_date,status:r.status,
+    issued:r.issued||0,rem:r.rem||0,pct:parseFloat(r.pct)||0,notes:r.notes||''};
+}
+function pkgToDb(pk){
+  return{partner_id:pk.pid,size:pk.size,start_date:pk.from,end_date:pk.to,
+    status:pk.status,issued:pk.issued,rem:pk.rem,pct:pk.pct,notes:pk.notes};
+}
+function partnerFromDb(r){
+  return{id:Number(r.id),name:r.name,form:r.form,status:r.status,date:r.date||'',
+    email:r.email||'',phone:r.phone||'',mgr:r.mgr||'',voen:r.voen||'',
+    signatory:r.signatory||'',signatory_pos:r.signatory_pos||'',
+    bank_name:r.bank_name||'',bank_account:r.bank_account||'',bank_code:r.bank_code||'',
+    legal_address:r.legal_address||''};
+}
+function userFromDb(r){
+  return{id:Number(r.id),login:r.login,name:r.name,email:r.email||'',role:r.role,status:r.status};
+}
+function docFromDb(r){
+  return{id:Number(r.id),name:r.name,size:r.size||0,mime:r.mime||'',date:r.date||'',note:r.note||'',storage_path:r.storage_path||''};
+}
+function feePackageFromDb(r){
+  return{id:Number(r.id),partner_id:Number(r.partner_id),name:r.name||'',status:r.status||'active',
+    effective_from:r.effective_from||'',effective_to:r.effective_to||'',
+    tiers:Array.isArray(r.tiers)?r.tiers:(typeof r.tiers==='string'?JSON.parse(r.tiers):[])};
+}
+// mcc_data → MCC_DATA format: {mcc, label, cnt, vol}
+function mccFromDb(r){
+  return{mcc:r.mcc||'',label:r.label||'',cnt:Number(r.txn_count)||0,vol:parseFloat(r.txn_volume)||0};
+}
+// country_data → COUNTRY_DATA format: {code, name, flag, cnt, vol}
+function countryFromDb(r){
+  return{code:r.code||'',name:r.name||'',flag:r.flag||'',cnt:Number(r.txn_count)||0,vol:parseFloat(r.txn_volume)||0};
+}
+
+// ── Load all data from Supabase ──
+async function loadData(){
+  if(!sbOn()) return; // no Supabase config → keep in-memory defaults
+  showSyncBadge('Yüklənir…','#f57c00');
+  try{
+    // Core tables — must succeed
+    const [partners,pkgs,users,docs]=await Promise.all([
+      sb('GET','partners',null,'?order=id'),
+      sb('GET','packages',null,'?order=id'),
+      sb('GET','sys_users',null,'?order=id'),
+      sb('GET','partner_docs',null,'?order=id'),
+    ]);
+    if(partners?.length) PARTNERS=partners.map(partnerFromDb);
+    if(pkgs?.length)     PACKAGES=pkgs.map(pkgFromDb);
+    if(users?.length)    SYS_USERS=users.map(userFromDb);
+    // Rebuild PARTNER_DOCS keyed by partner id
+    PARTNER_DOCS={};
+    PARTNERS.forEach(p=>PARTNER_DOCS[p.id]=[]);
+    (docs||[]).forEach(d=>{
+      const pid=Number(d.partner_id);
+      if(!PARTNER_DOCS[pid]) PARTNER_DOCS[pid]=[];
+      PARTNER_DOCS[pid].push(docFromDb(d));
+    });
+
+    // fee_packages — optional: table may not exist yet (migration v2 not run)
+    let fps=[];
+    try{
+      fps=await sb('GET','fee_packages',null,'?order=id')||[];
+    }catch(e){
+      // Table missing — show one-time banner, keep in-memory defaults
+      console.warn('fee_packages not found:',e.message);
+      showMigrationBanner();
+    }
+    // Rebuild FEE_PACKAGES keyed by partner id
+    FEE_PACKAGES={};
+    PARTNERS.forEach(p=>FEE_PACKAGES[p.id]=[]);
+    fps.forEach(fp=>{
+      const pid=Number(fp.partner_id);
+      if(!FEE_PACKAGES[pid]) FEE_PACKAGES[pid]=[];
+      FEE_PACKAGES[pid].push(feePackageFromDb(fp));
+    });
+
+    // mcc_data — optional: table may not exist yet (migration v3 not run)
+    try{
+      const mccRows=await sb('GET','mcc_data',null,'?order=txn_volume.desc')||[];
+      if(mccRows.length) MCC_DATA=mccRows.map(mccFromDb);
+    }catch(e){
+      console.warn('mcc_data not found, using defaults:',e.message);
+    }
+
+    // country_data — optional: table may not exist yet (migration v3 not run)
+    try{
+      const cntryRows=await sb('GET','country_data',null,'?order=txn_volume.desc')||[];
+      if(cntryRows.length) COUNTRY_DATA=cntryRows.map(countryFromDb);
+    }catch(e){
+      console.warn('country_data not found, using defaults:',e.message);
+    }
+
+    showSyncBadge('Sinxronizasiya: OK','#2e7d32');
+  }catch(e){
+    showSyncBadge('DB xətası','#e53935');
+    showToast('Supabase yükləmə xətası: '+e.message,false);
+    console.error(e);
+  }
+}
+
+function showMigrationBanner(){
+  // Show a sticky notice at the top of the app once
+  if(document.getElementById('migrationBanner')) return;
+  const div=document.createElement('div');
+  div.id='migrationBanner';
+  div.style.cssText='position:fixed;top:58px;left:240px;right:0;z-index:90;background:#fff3e0;border-bottom:2px solid #f57c00;padding:10px 22px;font-size:12px;color:#bf360c;display:flex;align-items:center;gap:10px';
+  div.innerHTML=`<i class="fa-solid fa-triangle-exclamation" style="font-size:16px"></i>
+    <div><strong>Miqrasiya tələb olunur:</strong>
+      Komisyon paketləri üçün <code>supabase_migration_v2.sql</code> faylını
+      Supabase SQL Editor-da icra edin — <em>fee_packages</em> cədvəli yaradılacaq.
+      Hazır olduqda səhifəni yeniləyin.
+    </div>
+    <button onclick="document.getElementById('migrationBanner').remove()"
+      style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:#bf360c;padding:2px 6px">&times;</button>`;
+  document.body.appendChild(div);
+}
+
+function showSyncBadge(text,color){
+  const el=document.getElementById('syncBadge');
+  if(el){el.textContent=text;el.style.color=color;}
+}
+
+// ── Supabase Storage helpers ──
+async function uploadFileToStorage(pid, file){
+  if(!sbOn()) return '';
+  const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const path=`partner-${pid}/${Date.now()}_${safeName}`;
+  const url=`${SUPABASE_URL}/storage/v1/object/partner-docs/${path}`;
+  const res=await fetch(url,{method:'POST',headers:{
+    'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,
+    'Content-Type':file.type||'application/octet-stream',
+  },body:file});
+  if(!res.ok){const t=await res.text();throw new Error(t);}
+  return path;
+}
+function getStorageUrl(storage_path){
+  if(!storage_path||!sbOn()) return null;
+  return`${SUPABASE_URL}/storage/v1/object/public/partner-docs/${storage_path}`;
+}
+
+// ── Reset to seed data (deletes and re-inserts via SQL — user does this in Supabase dashboard) ──
+function resetAllData(){
+  if(!sbOn()){
+    showToast('Supabase konfiqurasiya olunmayıb.',false);return;
+  }
+  alert('Məlumatları sıfırlamaq üçün Supabase SQL Editor-da supabase_setup.sql faylını yenidən icra edin.');
+}
+
+// ═══════════════════════ HELPERS
+const fmtN = (n,d=0)=>Number(n).toLocaleString('az-AZ',{minimumFractionDigits:d,maximumFractionDigits:d});
+const SYMBOLS = {AZN:'₼',USD:'$',EUR:'€',TRY:'₺',RUB:'₽'};
+const RATES   = {AZN:1, USD:1/1.7, EUR:1/1.85, TRY:1/0.053, RUB:1/0.053};
+function fmtMoney(n, cur='AZN') {
+  const sym  = SYMBOLS[cur]||cur;
+  const rate = RATES[cur]||1;
+  const v    = n * rate;
+  if (v>=1e6) return (v/1e6).toFixed(2)+' mln '+sym;
+  if (v>=1e3) return (v/1e3).toFixed(1)+' min '+sym;
+  return v.toFixed(2)+' '+sym;
+}
+const BADGE_MAP = {
+  active:   ['Aktiv / Active','b-active'],
+  inactive: ['Qeyri-aktiv / Inactive','b-inactive'],
+  exhausted:['Tükənib / Exhausted','b-exhausted'],
+  closed:   ['Bağlı / Closed','b-closed'],
+};
+function badge(s){const[l,c]=BADGE_MAP[s]||[s,'b-inactive'];return`<span class="badge ${c}">${l}</span>`;}
+function ubar(pct){
+  const cls=pct>=90?'danger':pct>=70?'warn':'ok';
+  const w=Math.min(100,pct);
+  return`<div class="ubar-wrap"><div class="ubar ${cls}" style="width:${w}%"></div></div><span class="ubar-lbl">${pct}%</span>`;
+}
+function pname(pid){return(PARTNERS.find(p=>p.id===pid)||{}).name||'';}
+function fmtDate(iso){if(!iso)return'—';const[y,m,d]=iso.split('-');return`${d}.${m}.${y}`;}
+function isoToday(){return new Date().toISOString().slice(0,10);}
+function showToast(msg,ok=true){
+  const t=document.getElementById('toast');
+  document.getElementById('toastText').textContent=msg;
+  document.getElementById('toastIcon').className='fa-solid '+(ok?'fa-check-circle':'fa-triangle-exclamation');
+  document.getElementById('toastIcon').style.color=ok?'#4dd0c4':'#ffb74d';
+  t.style.display='block';
+  clearTimeout(showToast._t);
+  showToast._t=setTimeout(()=>t.style.display='none',3000);
+}
+
+// ═══════════════════════ AUTH
+async function doLogin(){
+  const u=document.getElementById('loginUser').value.trim();
+  const p=document.getElementById('loginPass').value;
+
+  let usr=null;
+
+  // ── 1. Try Supabase sys_users first ──────────────────────────────────────
+  if(sbOn()){
+    try{
+      const rows=await sb('GET','sys_users',null,
+        `?login=eq.${encodeURIComponent(u)}&password=eq.${encodeURIComponent(p)}&status=eq.active&limit=1`);
+      if(rows&&rows.length){
+        const r=rows[0];
+        const role=(r.role||'viewer').toLowerCase();
+        const name=r.name||u;
+        // Build initials from first letters of each word (max 2)
+        const initials=name.split(/\s+/).map(w=>w[0]||'').join('').substring(0,2).toUpperCase();
+        const roleLabels={administrator:'Administrator',manager:'Partner Manager',analyst:'Analyst',viewer:'Viewer'};
+        usr={pass:p,name,role,initials,roleLabel:roleLabels[role]||role};
+      }
+    }catch(e){
+      // Supabase unavailable — fall through to local USERS
+      console.warn('Supabase auth failed, trying local USERS:',e.message);
+    }
+  }
+
+  // ── 2. Fallback: hardcoded USERS object ──────────────────────────────────
+  if(!usr){
+    const local=USERS[u];
+    if(local&&local.pass===p) usr=local;
+  }
+
+  // ── 3. Apply result ───────────────────────────────────────────────────────
+  if(usr){
+    currentRole=usr.role;
+    document.getElementById('loginError').style.display='none';
+    document.getElementById('userName').textContent=usr.name;
+    document.getElementById('userRole').textContent=usr.roleLabel||usr.role;
+    document.getElementById('userAvatar').textContent=usr.initials;
+    // Show users nav for admin only
+    document.getElementById('navUsers').style.display=
+      currentRole==='administrator'?'flex':'none';
+    document.getElementById('loginScreen').classList.remove('active');
+    document.getElementById('appScreen').classList.add('active');
+    initApp();
+  }else{
+    document.getElementById('loginError').style.display='flex';
+  }
+}
+function doLogout(){
+  document.getElementById('appScreen').classList.remove('active');
+  document.getElementById('loginScreen').classList.add('active');
+  document.getElementById('loginUser').value='';
+  document.getElementById('loginPass').value='';
+}
+document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+
+// ═══════════════════════ NAV
+const PAGE_TITLES={
+  dashboard:'Dashboard',
+  partners:'Tərəfdaşlar & Paketlər / Partners & Packages',
+  transactions:'Əməliyyat Analitikası / Transaction Analytics',
+  users:'İstifadəçilər & Rollar / Users & Roles'
+};
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelector(`[data-page="${id}"]`).classList.add('active');
+  document.getElementById('topbarTitle').textContent=PAGE_TITLES[id];
+}
+
+// ═══════════════════════ CHARTS
+let trendChart,donutChart,barChart,feeRateChart;
+function destroyChart(c){if(c){try{c.destroy()}catch(e){}}}
+
+function genDailyData(partnerId=0){
+  // No transactions table in Supabase yet — return a 30-day zero series.
+  // Replace this when you wire a daily-aggregate source.
+  const out=[];
+  for(let i=29;i>=0;i--){
+    const d=new Date();d.setDate(d.getDate()-i);
+    const label=`${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;
+    out.push({label,vol:0,cnt:0});
+  }
+  return out;
+}
+
+function initTrendChart(){
+  const daily=genDailyData(0);
+  destroyChart(trendChart);
+  trendChart=new Chart(document.getElementById('trendChart').getContext('2d'),{
+    type:'line',
+    data:{labels:daily.map(d=>d.label),datasets:[
+      {label:'Həcm (₼)',data:daily.map(d=>d.vol),yAxisID:'y',
+        borderColor:'#009688',backgroundColor:'rgba(0,150,136,.10)',
+        fill:true,tension:0.4,pointRadius:2,pointHoverRadius:5,borderWidth:2.5},
+      {label:'Say',data:daily.map(d=>d.cnt),yAxisID:'y1',
+        borderColor:'#f57c00',backgroundColor:'transparent',
+        fill:false,tension:0.4,pointRadius:1,borderWidth:1.5,borderDash:[5,3]}
+    ]},
+    options:{responsive:true,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:14}},
+        tooltip:{callbacks:{label:(ctx)=>ctx.datasetIndex===0
+          ?` Həcm: ₼ ${ctx.parsed.y.toLocaleString()}`
+          :` Say: ${ctx.parsed.y.toLocaleString()}`}}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:10},maxTicksLimit:10}},
+        y:{position:'left',grid:{color:'#f1f5f9'},ticks:{font:{size:10},callback:v=>'₼'+(v>=1e6?(v/1e6).toFixed(1)+'M':(v/1e3).toFixed(0)+'K')}},
+        y1:{position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:10}}}
+      }}
+  });
+}
+
+function initDonutChart(){
+  const sum=buildSummary();
+  const active=PARTNERS.filter(p=>p.status==='active');
+  const colors=['#009688','#43a047','#f57c00','#8e24aa','#00897b','#e53935','#1e88e5','#795548'];
+  destroyChart(donutChart);
+  donutChart=new Chart(document.getElementById('donutChart').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:active.map(p=>p.name),datasets:[{
+      data:active.map(p=>sum[p.id]?.vol||0),
+      backgroundColor:colors,borderWidth:2,borderColor:'#fff',hoverOffset:8}]},
+    options:{responsive:true,cutout:'65%',
+      plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:12,padding:10}},
+        tooltip:{callbacks:{label:(ctx)=>{
+          const total=ctx.dataset.data.reduce((a,b)=>a+b,0);
+          const pct=((ctx.parsed/total)*100).toFixed(1);
+          return` ₼${(ctx.parsed/1e3).toFixed(1)}K (${pct}%)`;
+        }}}}}
+  });
+}
+
+function renderBarChart(partnerId,currency){
+  const sym=SYMBOLS[currency]||'₼';
+  const rate=RATES[currency]||1;
+  const daily=genDailyData(partnerId||0);
+  destroyChart(barChart);
+  barChart=new Chart(document.getElementById('barChart').getContext('2d'),{
+    type:'bar',
+    data:{labels:daily.map(d=>d.label),datasets:[
+      {label:`Həcm (${sym})`,data:daily.map(d=>Math.round(d.vol*rate)),
+        backgroundColor:'rgba(0,150,136,.75)',borderColor:'#009688',borderWidth:1,borderRadius:4,yAxisID:'y',order:2},
+      {label:'Əməliyyat sayı',data:daily.map(d=>d.cnt),type:'line',
+        borderColor:'#f57c00',backgroundColor:'transparent',borderWidth:2,pointRadius:2,tension:0.4,yAxisID:'y1',order:1}
+    ]},
+    options:{responsive:true,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:14}},
+        tooltip:{callbacks:{label:(ctx)=>ctx.datasetIndex===0
+          ?` Həcm: ${sym} ${ctx.parsed.y.toLocaleString()}`
+          :` Say: ${ctx.parsed.y.toLocaleString()}`}}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:10},maxTicksLimit:12}},
+        y:{position:'left',grid:{color:'#f1f5f9'},ticks:{font:{size:10},callback:v=>sym+(v>=1e6?(v/1e6).toFixed(1)+'M':(v/1e3).toFixed(0)+'K')}},
+        y1:{position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:10}}}
+      }}
+  });
+}
+
+// ═══════════════════════ DASHBOARD
+function renderDashboard(){
+  const sum=buildSummary();
+  const active=PARTNERS.filter(p=>p.status==='active');
+  const activePkgs=PACKAGES.filter(pk=>pk.status==='active');
+  const totalIssued=PACKAGES.reduce((s,pk)=>s+pk.issued,0);
+  const totalRem=PACKAGES.reduce((s,pk)=>s+pk.rem,0);
+  const totalSize=PACKAGES.reduce((s,pk)=>s+pk.size,0);
+  const usagePct=totalSize>0?Math.round(totalIssued/totalSize*1000)/10:0;
+  const totalVol=Object.values(sum).reduce((s,p)=>s+p.vol,0);
+  const totalCnt=Object.values(sum).reduce((s,p)=>s+p.cnt,0);
+
+  document.getElementById('dashKpis').innerHTML=`
+    <div class="kpi-card"><div class="kpi-lbl"><i class="fa-solid fa-handshake"></i> Aktiv Tərəfdaşlar</div>
+      <div class="kpi-val">${active.length}</div><div class="kpi-sub">${PARTNERS.length} tərəfdaşdan</div></div>
+    <div class="kpi-card c-green"><div class="kpi-lbl"><i class="fa-solid fa-box"></i> Aktiv Paketlər</div>
+      <div class="kpi-val">${activePkgs.length}</div><div class="kpi-sub">${PACKAGES.length} paketin</div></div>
+    <div class="kpi-card c-purple"><div class="kpi-lbl"><i class="fa-solid fa-credit-card"></i> Buraxılmış Kartlar</div>
+      <div class="kpi-val">${fmtN(totalIssued)}</div><div class="kpi-sub">Bütün paketlər üzrə</div></div>
+    <div class="kpi-card c-teal"><div class="kpi-lbl"><i class="fa-solid fa-circle-minus"></i> Qalan Kartlar</div>
+      <div class="kpi-val">${fmtN(totalRem)}</div><div class="kpi-sub">Paketlərdə qalıb</div></div>
+    <div class="kpi-card c-orange"><div class="kpi-lbl"><i class="fa-solid fa-percent"></i> Ort. Paket İstifadəsi</div>
+      <div class="kpi-val">${usagePct}%</div><div class="kpi-sub">Paket yükü</div></div>
+    <div class="kpi-card"><div class="kpi-lbl"><i class="fa-solid fa-arrow-right-arrow-left"></i> Əməliyyat Həcmi (30g)</div>
+      <div class="kpi-val" style="font-size:18px">${fmtMoney(totalVol)}</div>
+      <div class="kpi-sub">${fmtN(totalCnt)} əməliyyat</div></div>`;
+
+  // Alert
+  const near=PACKAGES.filter(pk=>pk.status==='active'&&pk.pct>=90);
+  const alertEl=document.getElementById('dashAlert');
+  if(near.length>0){
+    alertEl.style.display='flex';
+    document.getElementById('dashAlertText').innerHTML=`
+      <strong>Paket xəbərdarlığı:</strong> ${near.length} aktiv paket ≥ 90% dolub.
+      <a onclick="showPage('partners')">Paketlərə bax →</a>`;
+  }else{alertEl.style.display='none';}
+
+  // Partners table
+  const sorted=[...PARTNERS].filter(p=>p.status==='active')
+    .sort((a,b)=>(sum[b.id]?.vol||0)-(sum[a.id]?.vol||0));
+  const totalV=Object.values(sum).reduce((s,p)=>s+p.vol,0)||1;
+  let html=`<thead><tr><th>#</th><th>Tərəfdaş</th><th>Buraxılmış</th><th>Qalan</th>
+    <th style="min-width:140px">Paket İstifadəsi</th>
+    <th class="r">Həcm (30g)</th><th class="r">Say (30g)</th><th>Ətraflı</th>
+  </tr></thead><tbody>`;
+  sorted.forEach((p,i)=>{
+    const s=sum[p.id]||{};
+    html+=`<tr><td style="color:#94a3b8;font-weight:600">${i+1}</td>
+      <td><strong>${p.name}</strong> ${badge(p.status)}</td>
+      <td>${fmtN(s.issued||0)}</td><td>${fmtN(s.rem||0)}</td>
+      <td>${ubar(s.pct||0)}</td>
+      <td class="r"><strong>${fmtMoney(s.vol||0)}</strong></td>
+      <td class="r">${fmtN(s.cnt||0)}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="openDetailModal(${p.id})">
+        <i class="fa-solid fa-magnifying-glass-chart"></i> Detal
+      </button></td></tr>`;
+  });
+  document.getElementById('dashPartnersTable').innerHTML=html+'</tbody>';
+
+  // All packages
+  let phtml=`<thead><tr><th>Paket ID</th><th>Tərəfdaş</th>
+    <th class="r">Həcm</th><th class="r">Buraxılmış</th><th class="r">Qalan</th>
+    <th style="min-width:150px">İstifadə</th><th>Müddət</th><th>Status</th>
+  </tr></thead><tbody>`;
+  PACKAGES.forEach(pk=>{
+    phtml+=`<tr><td class="mono">PKG-${String(pk.id).padStart(3,'0')}</td>
+      <td>${pname(pk.pid)}</td>
+      <td class="r">${fmtN(pk.size)}</td><td class="r">${fmtN(pk.issued)}</td><td class="r">${fmtN(pk.rem)}</td>
+      <td>${ubar(pk.pct)}</td>
+      <td style="font-size:11px;color:#64748b">${fmtDate(pk.from)} – ${fmtDate(pk.to)}</td>
+      <td>${badge(pk.status)}</td></tr>`;
+  });
+  document.getElementById('allPackagesTable').innerHTML=phtml+'</tbody>';
+
+  // ── FEE PACKAGES ANALYTICS ──────────────────────────────────────
+  const fs=buildFeeStats();
+  const sum2=buildSummary();
+
+  // KPIs
+  document.getElementById('feeKpis').innerHTML=`
+    <div class="kpi-card" style="border-color:#1565c0">
+      <div class="kpi-lbl"><i class="fa-solid fa-percent"></i> Aktiv Komisyon Paketləri</div>
+      <div class="kpi-val" style="color:#1565c0">${fs.active}</div>
+      <div class="kpi-sub">${fs.total} paketin cəmindən</div></div>
+    <div class="kpi-card" style="border-color:#2e7d32">
+      <div class="kpi-lbl"><i class="fa-solid fa-handshake"></i> Komisyon Sazişi Olan</div>
+      <div class="kpi-val" style="color:#2e7d32">${fs.pidsWithFp.size}</div>
+      <div class="kpi-sub">${PARTNERS.filter(p=>p.status==='active').length} aktiv tərəfdaşdan</div></div>
+    <div class="kpi-card" style="border-color:${fs.partnersWithout.length>0?'#e53935':'#43a047'}">
+      <div class="kpi-lbl"><i class="fa-solid fa-circle-exclamation"></i> Sazişsiz Aktiv Tərəfdaş</div>
+      <div class="kpi-val" style="color:${fs.partnersWithout.length>0?'#e53935':'#43a047'}">${fs.partnersWithout.length}</div>
+      <div class="kpi-sub">${fs.partnersWithout.length>0?fs.partnersWithout.map(p=>p.name).join(', '):'Hamısı əhatə olunub ✓'}</div></div>
+    <div class="kpi-card" style="border-color:#6a1b9a">
+      <div class="kpi-lbl"><i class="fa-solid fa-coins"></i> Təxmini Komisyon (30g)</div>
+      <div class="kpi-val" style="font-size:18px;color:#6a1b9a">${fmtMoney(fs.totalEst)}</div>
+      <div class="kpi-sub">30g əməliyyat həcminə görə</div></div>`;
+
+  // Fee alert
+  const feeAlertEl=document.getElementById('feeAlert');
+  if(fs.partnersWithout.length>0){
+    feeAlertEl.style.display='flex';
+    document.getElementById('feeAlertText').innerHTML=
+      `<strong>Komisyon paketi yoxdur:</strong> ${fs.partnersWithout.map(p=>`<strong>${p.name}</strong>`).join(', ')} — bu tərəfdaşlar üçün komisyon paketi əlavə edin.`;
+  }else{feeAlertEl.style.display='none';}
+
+  // Fee packages table
+  const allFps=Object.values(FEE_PACKAGES).flat().filter(fp=>fp.status==='active');
+  let ftHtml=`<thead><tr>
+    <th>Tərəfdaş</th><th>Paket Adı</th><th>Müddət</th>
+    <th class="r">Tier Sayı</th><th class="r">Min Dərəcə</th><th class="r">Maks Dərəcə</th><th>Status</th>
+    <th>Tierlər</th>
+  </tr></thead><tbody>`;
+  if(allFps.length){
+    allFps.forEach(fp=>{
+      const p=PARTNERS.find(x=>x.id===fp.partner_id);
+      const tiers=fp.tiers||[];
+      const rates=tiers.map(t=>Number(t.rate)).filter(r=>!isNaN(r));
+      const minR=rates.length?Math.min(...rates):0;
+      const maxR=rates.length?Math.max(...rates):0;
+      const tierPills=tiers.map((t,i)=>{
+        const lo=fmtN(t.from);
+        const hi=t.to===null||t.to===undefined?'∞':fmtN(t.to);
+        return`<span style="display:inline-flex;align-items:center;background:#e3f2fd;color:#1565c0;
+          border-radius:12px;padding:1px 7px;font-size:10px;font-weight:700;margin:1px">${lo}–${hi} ₼ → ${t.rate}%</span>`;
+      }).join('');
+      ftHtml+=`<tr>
+        <td><strong>${p?p.name:'—'}</strong></td>
+        <td style="font-size:12px">${fp.name}</td>
+        <td style="font-size:11px;color:#64748b">${fp.effective_from?fmtDate(fp.effective_from)+' – '+fmtDate(fp.effective_to):'Müddətsiz'}</td>
+        <td class="r"><strong>${tiers.length}</strong></td>
+        <td class="r" style="color:#2e7d32;font-weight:700">${maxR}%</td>
+        <td class="r" style="color:#1565c0;font-weight:700">${minR}%</td>
+        <td>${badge('active')}</td>
+        <td style="max-width:280px">${tierPills}</td>
+      </tr>`;
+    });
+  }else{
+    ftHtml+=`<tr><td colspan="8" style="color:#94a3b8;text-align:center;padding:16px">Aktiv komisyon paketi yoxdur</td></tr>`;
+  }
+  document.getElementById('feePackagesTable').innerHTML=ftHtml+'</tbody>';
+
+  // Fee estimate table
+  let feHtml=`<thead><tr>
+    <th>Tərəfdaş</th><th class="r">30g Həcm</th>
+    <th class="r">Tətbiq Tier</th><th class="r">Dərəcə</th>
+    <th class="r">Təxmini Komisyon</th><th class="r">Komissyon / Həcm</th>
+  </tr></thead><tbody>`;
+  const activePartnersF=PARTNERS.filter(p=>p.status==='active');
+  let grandTotal=0;
+  activePartnersF.forEach(p=>{
+    const vol=sum2[p.id]?.vol||0;
+    const fps=(FEE_PACKAGES[p.id]||[]).filter(fp=>fp.status==='active');
+    if(!fps.length||!vol){
+      feHtml+=`<tr>
+        <td><strong>${p.name}</strong></td>
+        <td class="r">${fmtMoney(vol)}</td>
+        <td class="r" colspan="3" style="color:#94a3b8;font-size:11px">Aktiv komisyon paketi yoxdur</td>
+        <td></td></tr>`;
+      return;
+    }
+    const fp=fps[0];
+    const{rate,commission,tier}=calcCommission(fp.tiers,vol);
+    grandTotal+=commission;
+    const tierLabel=tier?(fmtN(tier.from)+'–'+(tier.to===null||tier.to===undefined?'∞':fmtN(tier.to))+' ₼'):'—';
+    const share=vol>0?(commission/vol*100).toFixed(2):0;
+    const barW=Math.min(100,commission/Math.max(1,fs.totalEst)*100).toFixed(1);
+    feHtml+=`<tr>
+      <td><strong>${p.name}</strong>
+        <div style="font-size:10px;color:#94a3b8">${fp.name}</div></td>
+      <td class="r"><strong>${fmtMoney(vol)}</strong></td>
+      <td class="r" style="font-size:11px;color:#64748b">${tierLabel}</td>
+      <td class="r"><strong style="color:#1565c0">${rate}%</strong></td>
+      <td class="r">
+        <strong style="color:#6a1b9a">${fmtMoney(commission)}</strong>
+        <div style="height:4px;background:#e2e8f0;border-radius:2px;margin-top:3px;overflow:hidden">
+          <div style="width:${barW}%;height:100%;background:linear-gradient(90deg,#7b1fa2,#9c27b0);border-radius:2px"></div>
+        </div>
+      </td>
+      <td class="r" style="color:#64748b;font-size:12px">${share}%</td>
+    </tr>`;
+  });
+  feHtml+=`<tr style="background:#f3e5f5;font-weight:700">
+    <td colspan="4" style="text-align:right;color:#6a1b9a;padding:10px 14px">
+      <i class="fa-solid fa-sigma"></i> Ümumi Təxmini Komisyon:</td>
+    <td class="r" style="color:#6a1b9a;font-size:15px">${fmtMoney(grandTotal)}</td>
+    <td></td></tr>`;
+  document.getElementById('feeEstimateTable').innerHTML=feHtml+'</tbody>';
+
+  // Fee rate bar chart
+  destroyChart(feeRateChart);
+  const fpLabels=[];const fpDatasets=[];
+  const tierColors=['#1565c0','#1976d2','#42a5f5','#90caf9','#bbdefb'];
+  // Collect all active fps with tiers
+  const activeFpsForChart=PARTNERS.map(p=>{
+    const fp=(FEE_PACKAGES[p.id]||[]).find(x=>x.status==='active');
+    return fp?{partner:p.name,tiers:fp.tiers||[]}:null;
+  }).filter(Boolean);
+  if(activeFpsForChart.length){
+    activeFpsForChart.forEach(d=>fpLabels.push(d.partner.length>12?d.partner.slice(0,12)+'…':d.partner));
+    const maxTiers=Math.max(...activeFpsForChart.map(d=>d.tiers.length));
+    for(let i=0;i<maxTiers;i++){
+      fpDatasets.push({
+        label:`Tier ${i+1}`,
+        data:activeFpsForChart.map(d=>d.tiers[i]?d.tiers[i].rate:null),
+        backgroundColor:tierColors[i%tierColors.length],
+        borderRadius:4,borderSkipped:false,
+      });
+    }
+    const ctx=document.getElementById('feeRateChart');
+    if(ctx){
+      feeRateChart=new Chart(ctx.getContext('2d'),{
+        type:'bar',
+        data:{labels:fpLabels,datasets:fpDatasets},
+        options:{responsive:true,
+          plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:12}},
+            tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y}%`}}},
+          scales:{
+            x:{grid:{display:false},ticks:{font:{size:10}}},
+            y:{grid:{color:'#f1f5f9'},ticks:{font:{size:10},callback:v=>v+'%'},
+               title:{display:true,text:'Komisyon dərəcəsi (%)',font:{size:10},color:'#64748b'}}
+          }}
+      });
+    }
+  }
+}
+
+// ═══════════════════════ PARTNERS PAGE
+function renderPartnersPage(){
+  const sum=buildSummary();
+  const active=PARTNERS.filter(p=>p.status==='active').length;
+  const activePkgs=PACKAGES.filter(pk=>pk.status==='active').length;
+  const near=PACKAGES.filter(pk=>pk.status==='active'&&pk.pct>=90).length;
+
+  document.getElementById('partnerKpis').innerHTML=`
+    <div class="kpi-card"><div class="kpi-lbl"><i class="fa-solid fa-users"></i> Ümumi Tərəfdaş</div>
+      <div class="kpi-val">${PARTNERS.length}</div><div class="kpi-sub">${active} aktiv · ${PARTNERS.length-active} qeyri-aktiv</div></div>
+    <div class="kpi-card c-green"><div class="kpi-lbl"><i class="fa-solid fa-box-open"></i> Kart Paketləri</div>
+      <div class="kpi-val">${PACKAGES.length}</div><div class="kpi-sub">${activePkgs} aktiv</div></div>
+    <div class="kpi-card c-orange"><div class="kpi-lbl"><i class="fa-solid fa-triangle-exclamation"></i> Diqqət Tələb Edən (≥90%)</div>
+      <div class="kpi-val" style="color:${near>0?'#e53935':'#43a047'}">${near}</div>
+      <div class="kpi-sub">Aktiv paketlər</div></div>`;
+
+  // Partners table
+  const sum2p=buildSummary();
+  let html=`<thead><tr>
+    <th>Tərəfdaş</th><th>Status</th><th>Menecer</th>
+    <th class="r">Kart Pkt.</th><th class="r">Buraxılmış</th>
+    <th style="min-width:120px">İstifadə</th>
+    <th class="r">Həcm (30g)</th>
+    <th>Komisyon Paketi</th>
+    <th>Əməliyyatlar</th>
+  </tr></thead><tbody>`;
+  PARTNERS.forEach(p=>{
+    const s=sum2p[p.id]||{};
+    const ac=PACKAGES.filter(pk=>pk.pid===p.id&&pk.status==='active').length;
+    const tc=PACKAGES.filter(pk=>pk.pid===p.id).length;
+    const fps=(FEE_PACKAGES[p.id]||[]).filter(fp=>fp.status==='active');
+    const fp=fps[0];
+    let feeCell;
+    if(fp){
+      const tiers=fp.tiers||[];
+      const rates=tiers.map(t=>Number(t.rate));
+      const minR=rates.length?Math.min(...rates):0;
+      const maxR=rates.length?Math.max(...rates):0;
+      // Estimated commission
+      const vol=s.vol||0;
+      const{commission}=calcCommission(tiers,vol);
+      feeCell=`<div style="font-size:11px;font-weight:600;color:#1565c0">${fp.name.length>22?fp.name.slice(0,22)+'…':fp.name}</div>
+        <div style="font-size:10px;color:#64748b;margin-top:1px">
+          ${maxR}% – ${minR}% · ${tiers.length} tier
+        </div>
+        ${vol>0?`<div style="font-size:10px;color:#6a1b9a;margin-top:1px">
+          <i class="fa-solid fa-coins"></i> ~${fmtMoney(commission)} / ay
+        </div>`:''}`;
+    }else if(p.status==='active'){
+      feeCell=`<span style="color:#e53935;font-size:11px"><i class="fa-solid fa-circle-exclamation"></i> Paket yoxdur</span>`;
+    }else{
+      feeCell=`<span style="color:#94a3b8;font-size:11px">—</span>`;
+    }
+    html+=`<tr>
+      <td><strong>${p.name}</strong>
+        <div style="font-size:10px;color:#94a3b8">${p.form} · ${fmtDate(p.date)}</div></td>
+      <td>${badge(p.status)}</td>
+      <td style="font-size:12px">${p.mgr||'—'}</td>
+      <td class="r">${ac}/${tc}</td>
+      <td class="r">${fmtN(s.issued||0)}</td>
+      <td>${s.size>0?ubar(s.pct||0):'<span style="color:#94a3b8">—</span>'}</td>
+      <td class="r">${p.status==='active'?`<strong>${fmtMoney(s.vol||0)}</strong>`:'<span style="color:#94a3b8">—</span>'}</td>
+      <td>${feeCell}</td>
+      <td>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="openDetailModal(${p.id})">
+            <i class="fa-solid fa-magnifying-glass-chart"></i> Detal
+          </button>
+          <button class="btn btn-warning btn-sm" onclick="openPartnerForm(${p.id})">
+            <i class="fa-solid fa-pen"></i>
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="openPackageForm(${p.id})">
+            <i class="fa-solid fa-plus"></i>
+          </button>
+        </div>
+      </td></tr>`;
+  });
+  document.getElementById('partnersTable').innerHTML=html+'</tbody>';
+
+  // Package cards
+  document.getElementById('pkgCardsGrid').innerHTML=PACKAGES.map(pk=>{
+    const color=pk.pct>=90?'#e53935':pk.pct>=70?'#f57c00':'#43a047';
+    return`<div class="pkg-card" style="border-top:3px solid ${color}">
+      <div class="pkg-card-top">
+        <div>
+          <div class="pkg-pname">${pname(pk.pid)}</div>
+          <div class="pkg-meta">PKG-${String(pk.id).padStart(3,'0')} · ${fmtDate(pk.from)} – ${fmtDate(pk.to)}</div>
+        </div>${badge(pk.status)}
+      </div>
+      <div class="pkg-stats">
+        <span><strong>${fmtN(pk.issued)}</strong> buraxılıb</span>
+        <span style="color:#94a3b8">${fmtN(pk.rem)} qalıb</span>
+        <span style="color:${color};font-weight:700">${pk.pct}%</span>
+      </div>
+      ${ubar(pk.pct)}
+      <div style="margin-top:7px;font-size:10px;color:#94a3b8">Paket həcmi: ${fmtN(pk.size)} kart</div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════ PARTNER FORM (add / edit)
+function openPartnerForm(pid=null){
+  const isEdit=pid!==null;
+  document.getElementById('partnerFormTitle').innerHTML=
+    `<i class="fa-solid fa-handshake"></i> ${isEdit?'Tərəfdaşı Düzəlt':'Yeni Tərəfdaş'}`;
+  document.getElementById('pf_id').value=pid||'';
+  const setV=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
+  if(isEdit){
+    const p=PARTNERS.find(x=>x.id===pid);
+    if(!p)return;
+    setV('pf_name',p.name); setV('pf_form',p.form); setV('pf_status',p.status);
+    setV('pf_date',p.date); setV('pf_voen',p.voen); setV('pf_legal_address',p.legal_address);
+    setV('pf_signatory',p.signatory); setV('pf_signatory_pos',p.signatory_pos);
+    setV('pf_bank_name',p.bank_name); setV('pf_bank_code',p.bank_code);
+    setV('pf_bank_account',p.bank_account);
+    setV('pf_email',p.email); setV('pf_phone',p.phone); setV('pf_mgr',p.mgr);
+  }else{
+    ['pf_name','pf_voen','pf_legal_address','pf_signatory','pf_signatory_pos',
+     'pf_bank_name','pf_bank_code','pf_bank_account','pf_email','pf_phone','pf_mgr']
+      .forEach(id=>setV(id,''));
+    setV('pf_form','MMC'); setV('pf_status','active'); setV('pf_date',isoToday());
+  }
+  openModal('partnerFormModal');
+}
+
+async function savePartner(){
+  const g=id=>document.getElementById(id).value.trim();
+  const name=g('pf_name'); const date=g('pf_date'); const voen=g('pf_voen');
+  if(!name||!date){showToast('Ad və tarix məcburidir!',false);return;}
+  const fields={
+    name, form:g('pf_form'), status:g('pf_status'), date,
+    voen, legal_address:g('pf_legal_address'),
+    signatory:g('pf_signatory'), signatory_pos:g('pf_signatory_pos'),
+    bank_name:g('pf_bank_name'), bank_code:g('pf_bank_code'),
+    bank_account:g('pf_bank_account'),
+    email:g('pf_email'), phone:g('pf_phone'), mgr:g('pf_mgr'),
+  };
+  const pid=document.getElementById('pf_id').value;
+  try{
+    if(pid){
+      if(sbOn()) await sb('PATCH','partners',fields,`?id=eq.${pid}`);
+      const p=PARTNERS.find(x=>x.id===Number(pid));
+      if(p) Object.assign(p,fields);
+      showToast(`"${name}" yeniləndi.`);
+    }else{
+      let newId;
+      if(sbOn()){
+        const rows=await sb('POST','partners',fields);
+        newId=Number(rows[0].id);
+      }else{
+        newId=_nextPid++;
+      }
+      PARTNERS.push({id:newId,...fields});
+      if(!PARTNER_DOCS[newId]) PARTNER_DOCS[newId]=[];
+      showToast(`"${name}" əlavə edildi.`);
+    }
+  }catch(e){showToast('Xəta: '+e.message,false);return;}
+  closeModal('partnerFormModal');
+  refreshAll();
+}
+
+// ═══════════════════════ PACKAGE FORM
+function openPackageForm(preselectedPid=null){
+  const sel=document.getElementById('pkgf_partner');
+  sel.innerHTML='';
+  PARTNERS.filter(p=>p.status==='active').forEach(p=>{
+    const o=document.createElement('option');
+    o.value=p.id;o.textContent=p.name;
+    sel.appendChild(o);
+  });
+  if(preselectedPid)sel.value=preselectedPid;
+  document.getElementById('pkgf_size').value='';
+  document.getElementById('pkgf_notes').value='';
+  const today=isoToday();
+  const nextYear=new Date();nextYear.setFullYear(nextYear.getFullYear()+1);
+  document.getElementById('pkgf_from').value=today;
+  document.getElementById('pkgf_to').value=nextYear.toISOString().slice(0,10);
+  openModal('packageFormModal');
+}
+
+async function savePackage(){
+  const pid=parseInt(document.getElementById('pkgf_partner').value);
+  const size=parseInt(document.getElementById('pkgf_size').value);
+  const from=document.getElementById('pkgf_from').value;
+  const to=document.getElementById('pkgf_to').value;
+  const notes=document.getElementById('pkgf_notes').value.trim();
+  if(!pid||!size||size<1||!from||!to){showToast('Bütün məcburi sahələri doldurun!',false);return;}
+  if(to<=from){showToast('Bitmə tarixi başlama tarixindən böyük olmalıdır!',false);return;}
+  const dbRow=pkgToDb({pid,size,from,to,status:'active',issued:0,rem:size,pct:0,notes});
+  try{
+    let newId;
+    if(sbOn()){
+      const rows=await sb('POST','packages',dbRow);
+      newId=Number(rows[0].id);
+    }else{
+      newId=_nextPkgId++;
+    }
+    PACKAGES.push({id:newId,pid,size,from,to,status:'active',issued:0,rem:size,pct:0,notes});
+  }catch(e){showToast('Xəta: '+e.message,false);return;}
+  const p=PARTNERS.find(x=>x.id===pid);
+  showToast(`"${p?.name||''}" üçün paket əlavə edildi.`);
+  closeModal('packageFormModal');
+  refreshAll();
+}
+
+// ═══════════════════════ DETAIL MODAL
+function openDetailModal(pid){
+  const p=PARTNERS.find(x=>x.id===pid);
+  if(!p)return;
+  const sum=buildSummary();
+  const s=sum[pid]||{};
+  const pkgs=PACKAGES.filter(pk=>pk.pid===pid).sort((a,b)=>b.id-a.id);
+  document.getElementById('detailModalTitle').innerHTML=
+    `<i class="fa-solid fa-magnifying-glass-chart"></i> ${p.name}`;
+
+  const pkgRows=pkgs.map(pk=>`<tr>
+    <td class="mono">PKG-${String(pk.id).padStart(3,'0')}</td>
+    <td style="font-size:11px">${fmtDate(pk.from)} – ${fmtDate(pk.to)}</td>
+    <td class="r">${fmtN(pk.size)}</td><td class="r">${fmtN(pk.issued)}</td><td class="r">${fmtN(pk.rem)}</td>
+    <td style="min-width:130px">${ubar(pk.pct)}</td>
+    <td>${badge(pk.status)}</td>
+    ${pk.notes?`<td style="font-size:11px;color:#64748b;max-width:160px">${pk.notes}</td>`:'<td></td>'}
+  </tr>`).join('');
+
+  const docs=PARTNER_DOCS[pid]||[];
+  const fps=FEE_PACKAGES[pid]||[];
+  const feeSection=`
+    <div style="font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.5px;margin:18px 0 8px">
+      <i class="fa-solid fa-percent" style="color:#1565c0"></i> Komisyon &amp; Limit Paketləri
+      <span style="font-weight:400;color:#94a3b8;font-size:10px;text-transform:none;margin-left:6px">(${fps.length} paket)</span>
+    </div>
+    ${fps.length?fps.map(fp=>{
+      const tiers=fp.tiers||[];
+      return`<div class="fp-card">
+        <div class="fp-card-hdr">
+          <div>
+            <div class="fp-name">${fp.name}</div>
+            <div class="fp-period">${fp.effective_from?fmtDate(fp.effective_from)+' – '+fmtDate(fp.effective_to):'Müddətsiz'}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${fp.status==='active'?'<span class="badge b-active">Aktiv</span>':'<span class="badge b-inactive">Qeyri-aktiv</span>'}
+            <button class="btn btn-warning btn-sm" onclick="openFeePackageForm(${fp.id},${pid})">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="deleteFeePackage(${fp.id},${pid})">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </div>
+        <table class="tiers-tbl">
+          <thead><tr><th>Həcm aralığı (₼)</th><th>Komisyon dərəcəsi</th></tr></thead>
+          <tbody>${tiers.map((t,i)=>`<tr>
+            <td>${fmtN(t.from)} ₼ — ${t.to===null||t.to===undefined?'Limitsiz':fmtN(t.to)+' ₼'}</td>
+            <td><strong style="color:#1565c0">${t.rate}%</strong></td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>`;
+    }).join(''):`<div style="color:#94a3b8;font-size:12px;padding:8px 0">Hələ komisyon paketi əlavə edilməyib.</div>`}
+    <button class="btn btn-outline btn-sm" style="margin-top:4px" onclick="openFeePackageForm(null,${pid})">
+      <i class="fa-solid fa-plus" style="color:#1565c0"></i> Komisyon Paketi Əlavə et
+    </button>
+    ${fps.length?`
+    <div style="background:#e3f2fd;border-radius:8px;padding:13px;margin-top:12px">
+      <div style="font-size:11px;font-weight:700;color:#1565c0;margin-bottom:8px">
+        <i class="fa-solid fa-calculator"></i> Komisyon Kalkulyatoru
+        <span style="font-weight:400;color:#1565c0;font-size:10px;margin-left:6px">— Aktiv paketi əsas götürür</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <input type="number" id="calcVol-${pid}" min="0" step="1000"
+          style="border:1.5px solid #90caf9;border-radius:7px;padding:7px 10px;font-size:13px;width:200px;outline:none;font-family:inherit;background:#fff"
+          placeholder="Əməliyyat həcmi (₼)"
+          oninput="calcFeeResult(${pid})"
+          value="${s.vol>0?s.vol:''}">
+        <div id="calcResult-${pid}" style="font-size:13px;font-weight:600;color:#1565c0"></div>
+      </div>
+      ${s.vol>0?`<div style="font-size:11px;color:#64748b;margin-top:6px">
+        <i class="fa-solid fa-circle-info"></i> 30g əməliyyat həcminə (${fmtMoney(s.vol)}) görə hesablanmış dəyər avto-dolduruldu
+      </div>`:''}
+    </div>`:''}
+    `;
+
+  const canExport = currentRole==='administrator'||currentRole==='manager'||currentRole==='analyst';
+  const exportSection = canExport ? `
+    <div style="font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.5px;margin:18px 0 8px">
+      <i class="fa-solid fa-file-export" style="color:#009688"></i> Şablon Sənəd İxracı
+    </div>
+    <div class="export-row">
+      <button class="btn btn-outline" onclick="generateDocx(${pid},'contract')">
+        <i class="fa-solid fa-file-contract" style="color:#1565c0"></i> Əsas Müqavilə
+      </button>
+      <button class="btn btn-outline" onclick="generateDocx(${pid},'tariff')">
+        <i class="fa-solid fa-file-invoice" style="color:#2e7d32"></i> Tarif Əlavəsi
+      </button>
+      <button class="btn btn-outline" onclick="generateDocx(${pid},'nda')">
+        <i class="fa-solid fa-file-shield" style="color:#6a1b9a"></i> NDA
+      </button>
+    </div>` : '';
+
+  const canEdit = currentRole==='administrator'||currentRole==='manager';
+
+  document.getElementById('detailModalBody').innerHTML=`
+    <!-- Partner info card -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div style="background:#f8fafc;border-radius:8px;padding:12px;border-left:3px solid #009688">
+        <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px">STATUS</div>
+        ${badge(p.status)}</div>
+      <div style="background:#f8fafc;border-radius:8px;padding:12px;border-left:3px solid #43a047">
+        <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px">MÜQAVİLƏ TARİXİ</div>
+        <div style="font-weight:700;color:#334155">${fmtDate(p.date)}</div></div>
+      <div style="background:#f8fafc;border-radius:8px;padding:12px;border-left:3px solid #f57c00">
+        <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:3px">VÖEN</div>
+        <div style="font-weight:600;color:#334155;font-family:monospace">${p.voen||'—'}</div></div>
+      <div style="background:#f8fafc;border-radius:8px;padding:12px;border-left:3px solid #8e24aa">
+        <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:3px">HESAB MENECERİ</div>
+        <div style="font-weight:600;color:#334155;font-size:12px">${p.mgr||'—'}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;font-size:12px">
+      <div style="background:#f8fafc;border-radius:8px;padding:12px">
+        <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px">İMZALAYAN TƏRƏF</div>
+        <div style="font-weight:600;color:#334155">${p.signatory||'—'}</div>
+        <div style="color:#94a3b8;font-size:11px">${p.signatory_pos||''}</div></div>
+      <div style="background:#f8fafc;border-radius:8px;padding:12px">
+        <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px">BANK REKVİZİTLƏRİ</div>
+        <div style="font-weight:600;color:#334155">${p.bank_name||'—'}</div>
+        <div style="color:#64748b;font-size:11px;font-family:monospace;margin-top:2px">${p.bank_account||''}</div>
+        <div style="color:#94a3b8;font-size:10px">MFO: ${p.bank_code||'—'}</div></div>
+      <div style="background:#f8fafc;border-radius:8px;padding:12px;grid-column:1/-1">
+        <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px">HÜQUQİ ÜNVAN</div>
+        <div style="color:#334155">${p.legal_address||'—'}</div></div>
+    </div>
+    <!-- KPI -->
+    <div class="mini-tiles">
+      <div class="mini-tile mt-teal"><div class="val">${fmtN(s.issued||0)}</div><div class="lbl">Buraxılmış Kartlar</div></div>
+      <div class="mini-tile mt-green"><div class="val">${fmtN(s.rem||0)}</div><div class="lbl">Qalan Kartlar</div></div>
+      <div class="mini-tile mt-orange"><div class="val">${(s.pct||0).toFixed(1)}%</div><div class="lbl">Ort. İstifadə</div></div>
+    </div>
+    <!-- Packages -->
+    <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
+      Kart Paketləri</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:14px">
+      <thead><tr style="background:#f8fafc">
+        <th style="padding:7px 10px;text-align:left;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">ID</th>
+        <th style="padding:7px 10px;text-align:left;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Müddət</th>
+        <th style="padding:7px 10px;text-align:right;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Həcm</th>
+        <th style="padding:7px 10px;text-align:right;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Buraxılmış</th>
+        <th style="padding:7px 10px;text-align:right;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Qalan</th>
+        <th style="padding:7px 10px;min-width:120px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">İstifadə</th>
+        <th style="padding:7px 10px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Status</th>
+        <th style="padding:7px 10px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Qeyd</th>
+      </tr></thead>
+      <tbody>${pkgRows}</tbody>
+    </table>
+    <!-- Transaction summary -->
+    <div style="background:#f8fafc;border-radius:8px;padding:13px;margin-bottom:14px">
+      <div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:8px">ƏMƏLİYYAT XÜLASƏSİ (30 gün)</div>
+      <div style="display:flex;gap:22px;flex-wrap:wrap;font-size:12px">
+        <div><span style="color:#94a3b8">Həcm:</span> <strong>${fmtMoney(s.vol||0)}</strong></div>
+        <div><span style="color:#94a3b8">Əməliyyatlar:</span> <strong>${fmtN(s.cnt||0)}</strong></div>
+        <div><span style="color:#94a3b8">Ort. məbləğ:</span> <strong>${s.cnt>0?fmtMoney(s.vol/s.cnt):'—'}</strong></div>
+      </div>
+    </div>
+    ${feeSection}
+    ${exportSection}
+    <!-- Documents -->
+    <div style="font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.5px;margin:18px 0 8px">
+      <i class="fa-solid fa-folder-open" style="color:#f57c00"></i> Yüklənmiş Sənədlər
+      <span style="font-weight:400;color:#94a3b8;font-size:10px;text-transform:none;margin-left:6px">(${docs.length} fayl)</span>
+    </div>
+    <div id="docList-${pid}">${renderDocList(docs,pid)}</div>
+    <div class="upload-area" onclick="document.getElementById('docInput-${pid}').click()">
+      <i class="fa-solid fa-cloud-arrow-up" style="font-size:22px;margin-bottom:6px;display:block"></i>
+      Sənəd yükləmək üçün klikləyin<br>
+      <span style="font-size:10px;color:#94a3b8">PDF, DOC, DOCX, XLS, XLSX, ADOC · max 10MB hər biri</span>
+    </div>
+    <input type="file" id="docInput-${pid}" style="display:none"
+      accept=".pdf,.doc,.docx,.adoc,.odt,.xls,.xlsx"
+      multiple onchange="handleDocUpload(event,${pid})">
+    <!-- Actions -->
+    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end">
+      ${canEdit?`<button class="btn btn-warning" onclick="closeModal('partnerDetailModal');openPartnerForm(${pid})">
+        <i class="fa-solid fa-pen"></i> Düzəliş et</button>`:''}
+      <button class="btn btn-primary" onclick="closeModal('partnerDetailModal');openPackageForm(${pid})">
+        <i class="fa-solid fa-plus"></i> Kart Paketi
+      </button>
+      <button class="btn btn-outline" style="border-color:#1565c0;color:#1565c0" onclick="openFeePackageForm(null,${pid})">
+        <i class="fa-solid fa-percent"></i> Komisyon Paketi
+      </button>
+      <button class="btn btn-outline" onclick="goTxn(${pid})">
+        <i class="fa-solid fa-chart-line"></i> Əməliyyatlar
+      </button>
+    </div>`;
+  openModal('partnerDetailModal');
+  // Auto-calculate if 30d volume is available
+  if(s.vol>0) setTimeout(()=>calcFeeResult(pid),50);
+}
+
+function goTxn(pid){
+  closeModal('partnerDetailModal');
+  showPage('transactions');
+  document.getElementById('fPartner').value=pid;
+  applyFilters();
+}
+
+// ═══════════════════════ MODALS
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-bg.open').forEach(m=>m.classList.remove('open'));});
+
+// ═══════════════════════ TRANSACTIONS
+function initTxnFilters(){
+  const ps=document.getElementById('fPartner');
+  ps.innerHTML='<option value="0">Hamısı</option>';
+  PARTNERS.forEach(p=>{
+    const o=document.createElement('option');
+    o.value=p.id;o.textContent=p.name;ps.appendChild(o);
+  });
+  const ms=document.getElementById('fMcc');
+  ms.innerHTML='<option value="">Bütün MCC</option>';
+  MCC_DATA.forEach(m=>{
+    const o=document.createElement('option');o.value=m.mcc;o.textContent=`${m.mcc} – ${m.label}`;ms.appendChild(o);
+  });
+  const cs=document.getElementById('fCountry');
+  cs.innerHTML='<option value="">Bütün Ölkələr</option>';
+  COUNTRY_DATA.forEach(c=>{
+    const o=document.createElement('option');o.value=c.code;o.textContent=`${c.flag} ${c.name}`;cs.appendChild(o);
+  });
+  const to=new Date();const from=new Date();from.setDate(from.getDate()-29);
+  document.getElementById('fTo').value=to.toISOString().slice(0,10);
+  document.getElementById('fFrom').value=from.toISOString().slice(0,10);
+}
+
+function applyFilters(){
+  const pid=parseInt(document.getElementById('fPartner').value)||0;
+  const cur=document.getElementById('fCurrency').value||'AZN';
+  const mccFilter=document.getElementById('fMcc').value;
+  const ctryFilter=document.getElementById('fCountry').value;
+  const sym=SYMBOLS[cur]||'₼';const rate=RATES[cur]||1;
+
+  const pObj=pid?PARTNERS.find(p=>p.id===pid):null;
+  document.getElementById('barChartTitle').textContent=
+    `Gündəlik Əməliyyat Həcmi — ${pObj?pObj.name:'Bütün Tərəfdaşlar'}`;
+  renderBarChart(pid,cur);
+
+  const daily=genDailyData(pid||0);
+  const totalVol=daily.reduce((s,d)=>s+d.vol,0)*rate;
+  const totalCnt=daily.reduce((s,d)=>s+d.cnt,0);
+  const avgTkt=totalCnt>0?totalVol/totalCnt:0;
+  document.getElementById('txnKpis').innerHTML=`
+    <div class="kpi-card"><div class="kpi-lbl"><i class="fa-solid fa-arrow-right-arrow-left"></i> Ümumi Həcm</div>
+      <div class="kpi-val" style="font-size:18px">${sym} ${fmtN(totalVol,2)}</div>
+      <div class="kpi-sub">Seçilmiş dövr üçün</div></div>
+    <div class="kpi-card c-green"><div class="kpi-lbl"><i class="fa-solid fa-receipt"></i> Əməliyyat Sayı</div>
+      <div class="kpi-val">${fmtN(totalCnt)}</div><div class="kpi-sub">Uğurlu əməliyyatlar</div></div>
+    <div class="kpi-card c-orange"><div class="kpi-lbl"><i class="fa-solid fa-calculator"></i> Ort. Əməliyyat</div>
+      <div class="kpi-val" style="font-size:18px">${sym} ${fmtN(avgTkt,2)}</div>
+      <div class="kpi-sub">Orta çek məbləği</div></div>`;
+
+  // MCC
+  let mccRows=mccFilter?MCC_DATA.filter(m=>m.mcc===mccFilter):MCC_DATA;
+  const mccTotal=mccRows.reduce((s,m)=>s+m.vol,0)||1;
+  let mHtml=`<thead><tr><th>MCC</th><th>Kateqoriya</th><th class="r">Say</th><th class="r">Həcm</th><th style="min-width:80px">Pay</th></tr></thead><tbody>`;
+  [...mccRows].sort((a,b)=>b.vol-a.vol).forEach(m=>{
+    const v=m.vol*rate;const pct=(m.vol/mccTotal*100).toFixed(1);
+    mHtml+=`<tr><td class="mono">${m.mcc}</td><td>${m.label}</td>
+      <td class="r">${fmtN(m.cnt)}</td>
+      <td class="r"><strong>${sym} ${fmtN(v,0)}</strong></td>
+      <td><div class="share-bar-wrap"><div class="share-bar" style="width:${Math.min(100,pct)}%;background:#8e24aa"></div></div>
+        <small style="font-size:10px;color:#64748b">${pct}%</small></td></tr>`;
+  });
+  document.getElementById('mccTable').innerHTML=mHtml+'</tbody>';
+
+  // Country
+  let ctRows=ctryFilter?COUNTRY_DATA.filter(c=>c.code===ctryFilter):COUNTRY_DATA;
+  const ctTotal=ctRows.reduce((s,c)=>s+c.vol,0)||1;
+  let cHtml=`<thead><tr><th>Ölkə</th><th class="r">Say</th><th class="r">Həcm</th><th style="min-width:80px">Pay</th></tr></thead><tbody>`;
+  [...ctRows].sort((a,b)=>b.vol-a.vol).forEach(c=>{
+    const v=c.vol*rate;const pct=(c.vol/ctTotal*100).toFixed(1);
+    cHtml+=`<tr><td><span style="font-size:15px">${c.flag}</span>
+      <strong style="margin-left:5px">${c.name}</strong>
+      <span style="color:#94a3b8;font-size:10px;margin-left:3px">${c.code}</span></td>
+      <td class="r">${fmtN(c.cnt)}</td>
+      <td class="r"><strong>${sym} ${fmtN(v,0)}</strong></td>
+      <td><div class="share-bar-wrap"><div class="share-bar" style="width:${Math.min(100,pct)}%;background:#00897b"></div></div>
+        <small style="font-size:10px;color:#64748b">${pct}%</small></td></tr>`;
+  });
+  document.getElementById('countryTable').innerHTML=cHtml+'</tbody>';
+
+  // Per-partner
+  const sum=buildSummary();
+  const partTotal=Object.values(sum).reduce((s,p)=>s+p.vol,0)||1;
+  const sorted=[...PARTNERS].sort((a,b)=>(sum[b.id]?.vol||0)-(sum[a.id]?.vol||0));
+  let ptHtml=`<thead><tr><th>Tərəfdaş</th><th class="r">Əməliyyat Sayı</th>
+    <th class="r">Həcm</th><th class="r">Ort. Məbləğ</th>
+    <th style="min-width:140px">Ümumi Payı</th><th>WoW Trend</th>
+  </tr></thead><tbody>`;
+  sorted.forEach(p=>{
+    if(pid&&p.id!==pid)return;
+    const s=sum[p.id]||{};const v=(s.vol||0)*rate;
+    const cnt=s.cnt||0;const avg=cnt>0?v/cnt:0;
+    const share=((s.vol||0)/partTotal*100).toFixed(1);
+    const trendPct=(3.5+(p.id*1.7)%8).toFixed(1);
+    const trendCol=p.id%2===0?'#43a047':'#e53935';
+    ptHtml+=`<tr>
+      <td><strong>${p.name}</strong> ${badge(p.status)}</td>
+      <td class="r">${fmtN(cnt)}</td>
+      <td class="r"><strong>${sym} ${fmtN(v,0)}</strong></td>
+      <td class="r">${sym} ${fmtN(avg,2)}</td>
+      <td>${p.status==='active'&&v>0?`
+        <div style="height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden;margin-bottom:2px">
+          <div style="width:${Math.min(100,share)}%;height:100%;background:linear-gradient(90deg,#009688,#4dd0c4);border-radius:3px"></div>
+        </div><small style="font-size:10px;color:#64748b">${share}%</small>`:
+        '<span style="color:#94a3b8;font-size:11px">—</span>'}</td>
+      <td>${p.status==='active'?`<span style="color:${trendCol};font-weight:700;font-size:12px">+${trendPct}% həftəlik</span>`:
+        '<span style="color:#94a3b8;font-size:11px">Qeyri-aktiv</span>'}</td>
+    </tr>`;
+  });
+  document.getElementById('partnerTxnTable').innerHTML=ptHtml+'</tbody>';
+}
+
+function resetFilters(){
+  document.getElementById('fPartner').value='0';
+  document.getElementById('fCurrency').value='AZN';
+  document.getElementById('fMcc').value='';document.getElementById('fCountry').value='';
+  const to=new Date();const from=new Date();from.setDate(from.getDate()-29);
+  document.getElementById('fTo').value=to.toISOString().slice(0,10);
+  document.getElementById('fFrom').value=from.toISOString().slice(0,10);
+  applyFilters();
+}
+
+// ═══════════════════════ USERS PAGE
+const ROLE_LABELS={administrator:'Administrator',manager:'Partner Manager',analyst:'Analyst',viewer:'Viewer'};
+function roleBadge(role){
+  const l=ROLE_LABELS[role]||role;
+  return`<span class="rb rb-${role}">${l}</span>`;
+}
+function statusBadge(s){
+  if(s==='active')return`<span class="badge b-active">Aktiv</span>`;
+  if(s==='inactive')return`<span class="badge b-inactive">Qeyri-aktiv</span>`;
+  return`<span class="badge b-blocked">${s}</span>`;
+}
+
+function renderUsersPage(){
+  const total=SYS_USERS.length;
+  const active=SYS_USERS.filter(u=>u.status==='active').length;
+  const admins=SYS_USERS.filter(u=>u.role==='administrator').length;
+  document.getElementById('usersKpis').innerHTML=`
+    <div class="kpi-card"><div class="kpi-lbl"><i class="fa-solid fa-users"></i> Ümumi İstifadəçi</div>
+      <div class="kpi-val">${total}</div><div class="kpi-sub">${active} aktiv</div></div>
+    <div class="kpi-card c-green"><div class="kpi-lbl"><i class="fa-solid fa-circle-check"></i> Aktiv</div>
+      <div class="kpi-val">${active}</div><div class="kpi-sub">${total-active} qeyri-aktiv</div></div>
+    <div class="kpi-card c-red"><div class="kpi-lbl"><i class="fa-solid fa-user-shield"></i> Adminlər</div>
+      <div class="kpi-val">${admins}</div><div class="kpi-sub">Administrator rolu</div></div>`;
+
+  let rows=`<thead><tr>
+    <th>#</th><th>Ad Soyad</th><th>Login</th><th>E-poçt</th><th>Rol</th><th>Status</th><th>Əməliyyat</th>
+  </tr></thead><tbody>`;
+  SYS_USERS.forEach((u,i)=>{
+    rows+=`<tr>
+      <td style="color:#94a3b8;font-weight:600">${i+1}</td>
+      <td><strong>${u.name}</strong></td>
+      <td class="mono">${u.login}</td>
+      <td style="font-size:12px;color:#64748b">${u.email}</td>
+      <td>${roleBadge(u.role)}</td>
+      <td>${statusBadge(u.status)}</td>
+      <td><div style="display:flex;gap:5px">
+        <button class="btn btn-warning btn-sm" onclick="openUserForm(${u.id})">
+          <i class="fa-solid fa-pen"></i>
+        </button>
+        <button class="btn ${u.status==='active'?'btn-outline':'btn-success'} btn-sm"
+          onclick="toggleUserStatus(${u.id})">
+          <i class="fa-solid ${u.status==='active'?'fa-ban':'fa-circle-check'}"></i>
+          ${u.status==='active'?'Blokla':'Aktivləşdir'}
+        </button>
+      </div></td>
+    </tr>`;
+  });
+  document.getElementById('usersTable').innerHTML=rows+'</tbody>';
+
+  // Permissions matrix
+  const PERM_KEYS=['dashboard','partners','transactions','users','export','edit'];
+  let mRows='';
+  SYS_ROLES.forEach(r=>{
+    mRows+=`<tr style="border-bottom:1px solid #f1f5f9">
+      <td style="padding:9px 12px;text-align:left">
+        ${roleBadge(r.id)}<div style="font-size:10px;color:#94a3b8;margin-top:2px">${r.desc}</div>
+      </td>`;
+    PERM_KEYS.forEach(k=>{
+      mRows+=`<td>${r.perms[k]
+        ?'<span class="perm-yes">✓</span>'
+        :'<span class="perm-no">—</span>'}</td>`;
+    });
+    mRows+='</tr>';
+  });
+  document.getElementById('rolesMatrixBody').innerHTML=mRows;
+}
+
+function openUserForm(uid=null){
+  const isEdit=uid!==null;
+  document.getElementById('userFormTitle').innerHTML=
+    `<i class="fa-solid fa-${isEdit?'user-pen':'user-plus'}"></i> ${isEdit?'İstifadəçini Düzəlt':'Yeni İstifadəçi'}`;
+  document.getElementById('uf_id').value=uid||'';
+  const setV=(id,v)=>document.getElementById(id).value=v||'';
+  if(isEdit){
+    const u=SYS_USERS.find(x=>x.id===uid);
+    if(!u)return;
+    setV('uf_name',u.name); setV('uf_login',u.login);
+    setV('uf_email',u.email); setV('uf_role',u.role); setV('uf_status',u.status);
+    setV('uf_pass',''); setV('uf_pass2','');
+    // Make password optional when editing
+    document.getElementById('uf_pass_req').style.display='none';
+    document.getElementById('uf_pass2_req').style.display='none';
+  }else{
+    ['uf_name','uf_login','uf_email','uf_pass','uf_pass2'].forEach(id=>setV(id,''));
+    setV('uf_role','analyst'); setV('uf_status','active');
+    document.getElementById('uf_pass_req').style.display='';
+    document.getElementById('uf_pass2_req').style.display='';
+  }
+  openModal('userFormModal');
+}
+
+async function saveUser(){
+  const g=id=>document.getElementById(id).value.trim();
+  const name=g('uf_name'),login=g('uf_login'),email=g('uf_email');
+  const role=g('uf_role'),status=g('uf_status');
+  const pass=g('uf_pass'),pass2=g('uf_pass2');
+  const uid=document.getElementById('uf_id').value;
+  if(!name||!login||!email){showToast('Ad, login və e-poçt məcburidir!',false);return;}
+  if(!uid&&(!pass||pass.length<6)){showToast('Şifrə minimum 6 simvol olmalıdır!',false);return;}
+  if(pass&&pass!==pass2){showToast('Şifrələr uyğun gəlmir!',false);return;}
+  // Check login uniqueness
+  const dup=SYS_USERS.find(u=>u.login===login&&u.id!==Number(uid));
+  if(dup){showToast('Bu login artıq istifadə edilir!',false);return;}
+  const fields={login,name,email,role,status};
+  try{
+    if(uid){
+      if(sbOn()) await sb('PATCH','sys_users',fields,`?id=eq.${uid}`);
+      const u=SYS_USERS.find(x=>x.id===Number(uid));
+      if(u) Object.assign(u,fields);
+      showToast(`"${name}" yeniləndi.`);
+    }else{
+      let newId;
+      if(sbOn()){
+        const rows=await sb('POST','sys_users',fields);
+        newId=Number(rows[0].id);
+      }else{
+        newId=_nextUserId++;
+      }
+      SYS_USERS.push({id:newId,...fields});
+      showToast(`"${name}" əlavə edildi.`);
+    }
+  }catch(e){showToast('Xəta: '+e.message,false);return;}
+  closeModal('userFormModal');
+  renderUsersPage();
+}
+
+async function toggleUserStatus(uid){
+  const u=SYS_USERS.find(x=>x.id===uid);
+  if(!u)return;
+  u.status=u.status==='active'?'inactive':'active';
+  try{
+    if(sbOn()) await sb('PATCH','sys_users',{status:u.status},`?id=eq.${uid}`);
+  }catch(e){showToast('Xəta: '+e.message,false);u.status=u.status==='active'?'inactive':'active';return;}
+  showToast(`"${u.name}" — ${u.status==='active'?'aktivləşdirildi':'bloklandı'}.`);
+  renderUsersPage();
+}
+
+// ═══════════════════════ DOCUMENT HELPERS
+function renderDocList(docs, pid){
+  if(!docs||!docs.length) return`<div style="color:#94a3b8;font-size:12px;padding:8px 0">Hələ sənəd əlavə edilməyib.</div>`;
+  return docs.map(d=>{
+    const dlUrl=getStorageUrl(d.storage_path);
+    return`<div class="doc-item">
+      <div class="doc-icon">${fileIcon(d.mime)}</div>
+      <div class="doc-info">
+        <div class="doc-name">${d.name}</div>
+        <div class="doc-meta">${fmtBytes(d.size)} · ${d.date}${d.note?' · '+d.note:''}</div>
+      </div>
+      ${dlUrl?`<a href="${dlUrl}" target="_blank" download="${d.name}" class="btn btn-success btn-sm" title="Yüklə">
+        <i class="fa-solid fa-download"></i></a>`:
+        `<span class="btn btn-outline btn-sm" style="opacity:.4;cursor:not-allowed" title="Fayl storage-da deyil"><i class="fa-solid fa-download"></i></span>`}
+      <button class="btn btn-danger btn-sm" onclick="deleteDoc(${d.id},${pid})" title="Sil">
+        <i class="fa-solid fa-trash"></i>
+      </button>
+    </div>`;
+  }).join('');
+}
+function refreshDocList(pid){
+  const docs=PARTNER_DOCS[pid]||[];
+  const el=document.getElementById(`docList-${pid}`);
+  if(el) el.innerHTML=renderDocList(docs,pid);
+}
+
+function fileIcon(mime){
+  if(!mime)return'📄';
+  if(mime.includes('pdf'))return'📕';
+  if(mime.includes('word')||mime.includes('doc'))return'📘';
+  if(mime.includes('sheet')||mime.includes('excel')||mime.includes('xls'))return'📗';
+  return'📄';
+}
+function fmtBytes(b){
+  if(b>=1048576)return(b/1048576).toFixed(1)+' MB';
+  if(b>=1024)return(b/1024).toFixed(0)+' KB';
+  return b+' B';
+}
+
+async function handleDocUpload(event,pid){
+  const files=Array.from(event.target.files);
+  if(!files.length)return;
+  const today=isoToday();
+  let uploaded=0;
+  for(const f of files){
+    if(f.size>10*1024*1024){showToast(`"${f.name}" 10MB-dan böyükdür, atlandı.`,false);continue;}
+    // Upload binary to Supabase Storage
+    let storage_path='';
+    if(sbOn()){
+      try{storage_path=await uploadFileToStorage(pid,f);}
+      catch(e){showToast(`"${f.name}" storage xətası: ${e.message}. Metadata saxlanılır…`,false);}
+    }
+    const docData={name:f.name,size:f.size,mime:f.type||'application/octet-stream',date:today,note:'',storage_path};
+    let newId;
+    try{
+      if(sbOn()){
+        const rows=await sb('POST','partner_docs',{partner_id:pid,...docData});
+        newId=Number(rows[0].id);
+      }else{newId=_nextDocId++;}
+    }catch(e){showToast('Sənəd saxlama xətası: '+e.message,false);continue;}
+    if(!PARTNER_DOCS[pid]) PARTNER_DOCS[pid]=[];
+    PARTNER_DOCS[pid].push({id:newId,...docData});
+    uploaded++;
+  }
+  refreshDocList(pid);
+  event.target.value='';
+  if(uploaded>0) showToast(`${uploaded} sənəd yükləndi.`);
+}
+
+async function deleteDoc(docId,pid){
+  if(!PARTNER_DOCS[pid])return;
+  const doc=PARTNER_DOCS[pid].find(d=>d.id===docId);
+  try{
+    if(sbOn()){
+      // Remove binary from storage
+      if(doc?.storage_path){
+        try{await fetch(`${SUPABASE_URL}/storage/v1/object/partner-docs/${doc.storage_path}`,
+          {method:'DELETE',headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});}
+        catch(e){console.warn('Storage silmə xətası:',e);}
+      }
+      await sb('DELETE','partner_docs',null,`?id=eq.${docId}`);
+    }
+  }catch(e){showToast('Silmə xətası: '+e.message,false);return;}
+  PARTNER_DOCS[pid]=PARTNER_DOCS[pid].filter(d=>d.id!==docId);
+  refreshDocList(pid);
+  showToast('Sənəd silindi.');
+}
+
+// ═══════════════════════ FEE PACKAGES CRUD
+let _fpCurrentPid = null;
+
+function openFeePackageForm(fpId=null, pid){
+  _fpCurrentPid = pid;
+  document.getElementById('fpf_pid').value = pid;
+  document.getElementById('fpf_id').value  = fpId||'';
+  const isEdit = fpId !== null;
+  document.getElementById('fpFormTitle').innerHTML =
+    `<i class="fa-solid fa-percent" style="color:#1565c0"></i> ${isEdit?'Komisyon Paketini Düzəlt':'Yeni Komisyon Paketi'}`;
+  const setV=(id,v)=>document.getElementById(id).value=v||'';
+  if(isEdit){
+    const fp=(FEE_PACKAGES[pid]||[]).find(x=>x.id===fpId);
+    if(!fp)return;
+    setV('fpf_name',fp.name); setV('fpf_status',fp.status);
+    setV('fpf_from',fp.effective_from); setV('fpf_to',fp.effective_to);
+    renderFpTiers(fp.tiers||[]);
+  }else{
+    ['fpf_name','fpf_from','fpf_to'].forEach(id=>setV(id,''));
+    setV('fpf_status','active');
+    renderFpTiers([{from:0,to:'',rate:''}]);
+  }
+  openModal('feePackageFormModal');
+}
+
+function renderFpTiers(tiers){
+  const tbody=document.getElementById('fpTiersBody');
+  tbody.innerHTML='';
+  tiers.forEach((t,i)=>addFpTierRow(t,i));
+}
+
+function addFpTierRow(t={},idx=null){
+  const tbody=document.getElementById('fpTiersBody');
+  const i=idx!==null?idx:tbody.rows.length;
+  const tr=document.createElement('tr');
+  const fromVal = t.from!==undefined&&t.from!==null ? t.from : '';
+  const toVal   = t.to!==undefined&&t.to!==null ? t.to : '';
+  const rateVal = t.rate!==undefined ? t.rate : '';
+  tr.innerHTML=`
+    <td><input class="tier-inp" type="number" min="0" step="1" value="${fromVal}"
+         id="tier_from_${i}" placeholder="0" oninput="updateNextTierFrom(${i})"></td>
+    <td><input class="tier-inp" type="number" min="0" step="1" value="${toVal}"
+         id="tier_to_${i}" placeholder="limitsiz" oninput="updateNextTierFrom(${i})"></td>
+    <td><input class="tier-inp" type="number" min="0" max="100" step="0.01" value="${rateVal}"
+         id="tier_rate_${i}" placeholder="0.00"></td>
+    <td><button class="btn btn-danger btn-sm" onclick="removeFpTierRow(this)">
+      <i class="fa-solid fa-xmark"></i></button></td>`;
+  tbody.appendChild(tr);
+}
+
+function updateNextTierFrom(i){
+  const toEl=document.getElementById(`tier_to_${i}`);
+  const nextFromEl=document.getElementById(`tier_from_${i+1}`);
+  if(toEl&&nextFromEl&&toEl.value){
+    nextFromEl.value=Number(toEl.value)+1;
+  }
+}
+
+function removeFpTierRow(btn){
+  btn.closest('tr').remove();
+}
+
+function getFpTiers(){
+  const tbody=document.getElementById('fpTiersBody');
+  const tiers=[];
+  Array.from(tbody.rows).forEach(row=>{
+    const inputs=row.querySelectorAll('input');
+    const fromV=Number(inputs[0].value)||0;
+    const toV=inputs[1].value.trim()===''?null:Number(inputs[1].value);
+    const rateV=parseFloat(inputs[2].value)||0;
+    tiers.push({from:fromV,to:toV,rate:rateV});
+  });
+  return tiers;
+}
+
+async function saveFeePackage(){
+  const g=id=>document.getElementById(id).value.trim();
+  const name=g('fpf_name'),status=g('fpf_status');
+  const effective_from=g('fpf_from'),effective_to=g('fpf_to');
+  const fpId=document.getElementById('fpf_id').value;
+  const pid=Number(document.getElementById('fpf_pid').value);
+  if(!name){showToast('Paket adı məcburidir!',false);return;}
+  const tiers=getFpTiers();
+  if(!tiers.length){showToast('Minimum bir tier əlavə edin!',false);return;}
+  const fields={partner_id:pid,name,status,effective_from,effective_to,tiers};
+  try{
+    if(fpId){
+      // edit
+      if(sbOn()) await sb('PATCH','fee_packages',{name,status,effective_from,effective_to,tiers},`?id=eq.${fpId}`);
+      const fp=(FEE_PACKAGES[pid]||[]).find(x=>x.id===Number(fpId));
+      if(fp) Object.assign(fp,{name,status,effective_from,effective_to,tiers});
+      showToast(`"${name}" yeniləndi.`);
+    }else{
+      let newId;
+      if(sbOn()){
+        const rows=await sb('POST','fee_packages',fields);
+        newId=Number(rows[0].id);
+      }else{newId=_nextFpId++;}
+      if(!FEE_PACKAGES[pid]) FEE_PACKAGES[pid]=[];
+      FEE_PACKAGES[pid].push({id:newId,...fields});
+      showToast(`"${name}" əlavə edildi.`);
+    }
+  }catch(e){showToast('Xəta: '+e.message,false);return;}
+  closeModal('feePackageFormModal');
+  // Reopen detail modal to refresh fee section
+  openDetailModal(pid);
+}
+
+async function deleteFeePackage(fpId,pid){
+  if(!confirm('Bu komisyon paketini silmək istəyirsiniz?'))return;
+  try{
+    if(sbOn()) await sb('DELETE','fee_packages',null,`?id=eq.${fpId}`);
+  }catch(e){showToast('Silmə xətası: '+e.message,false);return;}
+  if(FEE_PACKAGES[pid]) FEE_PACKAGES[pid]=FEE_PACKAGES[pid].filter(fp=>fp.id!==fpId);
+  showToast('Komisyon paketi silindi.');
+  openDetailModal(pid);
+}
+
+function calcFeeResult(pid){
+  const volEl=document.getElementById(`calcVol-${pid}`);
+  const resEl=document.getElementById(`calcResult-${pid}`);
+  if(!volEl||!resEl)return;
+  const vol=parseFloat(volEl.value)||0;
+  if(!vol){resEl.textContent='';return;}
+  const fps=(FEE_PACKAGES[pid]||[]).filter(fp=>fp.status==='active');
+  if(!fps.length){resEl.innerHTML='<span style="color:#e53935">Aktiv paket yoxdur</span>';return;}
+  const fp=fps[0];
+  const{rate,commission,tier}=calcCommission(fp.tiers,vol);
+  const tierLabel=tier?(fmtN(tier.from)+'–'+(tier.to===null||tier.to===undefined?'∞':fmtN(tier.to))+' ₼ → '+rate+'%'):(rate+'%');
+  resEl.innerHTML=`<span style="background:#e3f2fd;border:1px solid #90caf9;border-radius:6px;padding:4px 10px;display:inline-flex;align-items:center;gap:6px">
+    <i class="fa-solid fa-tag" style="color:#1565c0"></i>
+    Tier: <strong>${tierLabel}</strong>
+    &nbsp;·&nbsp;
+    <i class="fa-solid fa-coins" style="color:#6a1b9a"></i>
+    Komisyon: <strong style="color:#6a1b9a">${fmtMoney(commission)}</strong>
+  </span>`;
+}
+
+// ═══════════════════════ DOCX GENERATION (JSZip)
+async function generateDocx(pid, type){
+  const p=PARTNERS.find(x=>x.id===pid);
+  if(!p){showToast('Tərəfdaş tapılmadı!',false);return;}
+  if(typeof JSZip==='undefined'||typeof saveAs==='undefined'){
+    showToast('JSZip/FileSaver yüklənmir. İnternet bağlantısını yoxlayın.',false);return;
+  }
+  const year=new Date().getFullYear();
+  const contractNum=`BaaS-${String(pid).padStart(4,'0')}/${year}`;
+  const months=['yanvar','fevral','mart','aprel','may','iyun','iyul','avqust','sentyabr','oktyabr','noyabr','dekabr'];
+  const now=new Date();
+  const dateStr=`${now.getDate()} ${months[now.getMonth()]} ${year} il`;
+  const party1='Azərbaycan Beynəlxalq Bankı ASC';
+  const party1Signatory='Cəlal Hüseynli, Baş İcraçı Direktor';
+
+  function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function para(text,bold=false,sz=22,color='000000',align='left'){
+    const jc=align==='center'?'<w:jc w:val="center"/>':align==='right'?'<w:jc w:val="right"/>':'';
+    const b=bold?'<w:b/>':'';
+    return`<w:p><w:pPr>${jc}</w:pPr><w:r><w:rPr>${b}<w:sz w:val="${sz}"/><w:color w:val="${color}"/></w:rPr><w:t xml:space="preserve">${esc(text)}</w:t></w:r></w:p>`;
+  }
+  function heading(text,lvl=1){
+    const sz=lvl===1?28:24;
+    return`<w:p><w:pPr><w:pStyle w:val="Heading${lvl}"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="${sz}"/><w:color w:val="004D40"/></w:rPr><w:t>${esc(text)}</w:t></w:r></w:p>`;
+  }
+  function blank(){return`<w:p><w:r><w:t></w:t></w:r></w:p>`;}
+  function field(label,value){
+    return`<w:p><w:r><w:rPr><w:b/><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">${esc(label)}: </w:t></w:r><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t>${esc(value||'—')}</w:t></w:r></w:p>`;
+  }
+
+  let bodyXml='';
+  let filename='';
+
+  if(type==='contract'){
+    filename=`Müqavilə_${p.name}_${year}.docx`;
+    bodyXml=
+      heading(`BaaS XİDMƏT MÜQAVİLƏSİ № ${contractNum}`)+
+      para(`Bakı şəhəri                                                          ${dateStr}`,false,20,'64748b','right')+blank()+
+      para(`Bir tərəfdən — ${party1} ("Bank"), digər tərəfdən — ${p.name} ("Tərəfdaş") aşağıdakı şərtlər əsasında bu Müqaviləni bağladılar:`,false,22)+blank()+
+      heading('1. MÜQAVİLƏNİN MÖVZUSİ',2)+
+      para('1.1. Bank Tərəfdaşa BaaS (Banking-as-a-Service) platforması çərçivəsində kart emissiyası, ödəniş emalı və müvafiq maliyyə xidmətləri göstərir.')+
+      para('1.2. Tərəfdaş Bank tərəfindən müəyyən edilmiş qaydalar əsasında son müştərilərə xidmət göstərir.')+blank()+
+      heading('2. TƏRƏFLƏRİN REKVİZİTLƏRİ',2)+
+      para('Tərəfdaş məlumatları:',true)+
+      field('Şirkətin adı',`${p.name} (${p.form})`)+
+      field('VÖEN',p.voen)+
+      field('Hüquqi ünvan',p.legal_address)+
+      field('İmzalayan',`${p.signatory}, ${p.signatory_pos}`)+
+      field('Bank',p.bank_name)+
+      field('IBAN',p.bank_account)+
+      field('MFO',p.bank_code)+blank()+
+      heading('3. MÜQAVİLƏNİN MÜDDƏTİ',2)+
+      para(`3.1. Müqavilə imzalandığı tarixdən (${dateStr}) qüvvəyə minir.`)+
+      para('3.2. Müqavilə 1 (bir) il müddətinə bağlanır, tərəflərdən biri imtina etmədikdə avtomatik uzadılır.')+blank()+
+      heading('4. İMZALAR',2)+blank()+
+      para('BANK tərəfindən:',true)+para(party1Signatory)+blank()+
+      para('TƏRƏFDAŞ tərəfindən:',true)+para(`${p.signatory}, ${p.signatory_pos}`)+para(p.name);
+  } else if(type==='tariff'){
+    filename=`Tarif_Əlavəsi_${p.name}_${year}.docx`;
+    bodyXml=
+      heading(`TARİF ƏLAVƏSİ № ${contractNum}-T`)+
+      para(`Bakı şəhəri                                                          ${dateStr}`,false,20,'64748b','right')+blank()+
+      para(`Bu Tarif Əlavəsi № ${contractNum} müqaviləsinə əlavə olunur.`,false,22)+blank()+
+      heading('TARİF CƏDVƏLİ',2)+blank();
+    // simple tariff table as text
+    const tariffs=[
+      ['Kart emissiyası','3.00 ₼ / kart'],['Aylıq xidmət haqqı','1.20 ₼ / aktiv kart'],
+      ['Daxili ödəniş','0.30 ₼ / əməliyyat'],['Xarici ödəniş','0.80 ₼ / əməliyyat'],
+      ['ATM nağd çıxarma','0.50 ₼ + 0.3%'],['POS əməliyyatı','0.20 ₼ + 0.2%'],
+    ];
+    tariffs.forEach(([svc,price])=>{ bodyXml+=field(svc,price); });
+    bodyXml+=blank()+
+      para('Yuxarıdakı tariflər ƏDV-siz göstərilib. ƏDV Azərbaycan qanunvericiliyinə uyğun hesablanır.',false,18,'64748b')+blank()+
+      heading('İMZALAR',2)+blank()+
+      para('BANK: '+party1Signatory,false,20)+blank()+
+      para('TƏRƏFDAŞ: '+p.signatory+', '+p.signatory_pos+' — '+p.name,false,20);
+  } else {
+    filename=`NDA_${p.name}_${year}.docx`;
+    bodyXml=
+      heading(`KONFİDENSİALLIQ MÜQAVİLƏSİ (NDA) № ${contractNum}-NDA`)+
+      para(`Bakı şəhəri                                                          ${dateStr}`,false,20,'64748b','right')+blank()+
+      para(`Bu Müqavilə ${party1} ("Açıqlayan") ilə ${p.name} ("Alan") arasında bağlanır.`,false,22)+blank()+
+      heading('1. MƏQSƏD',2)+
+      para('Tərəflər BaaS əməkdaşlığı çərçivəsində mübadiləsini etdikləri məxfi məlumatların qorunması məqsədilə bu sazişi imzalayırlar.')+blank()+
+      heading('2. MƏXFİ MƏLUMAT',2)+
+      para('2.1. Məxfi məlumat dedikdə: texnoloji həllər, API sənədləri, müştəri məlumatları, maliyyə şərtləri, biznes strategiyaları nəzərdə tutulur.')+
+      para('2.2. Tərəflərdən hər biri öyrəndiyi məxfi məlumatı üçüncü şəxslərə açıqlamamağı öhdəsinə götürür.')+blank()+
+      heading('3. MÜDDƏT',2)+
+      para(`3.1. Məxfilik öhdəliyi bu Müqavilənin imzalandığı tarixdən (${dateStr}) etibarən 3 (üç) il müddətinə qüvvədədir.`)+blank()+
+      heading('4. İMZALAR',2)+blank()+
+      para('AÇIQLAYAN: '+party1Signatory,false,20)+blank()+
+      para('ALAN: '+p.signatory+', '+p.signatory_pos+' — '+p.name,false,20);
+  }
+
+  const CT=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+  <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+</Types>`;
+  const RELS=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
+</Relationships>`;
+  const WORD_RELS=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+  const STYLES=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:style w:type="paragraph" w:styleId="Normal"><w:name w:val="Normal"/>
+    <w:rPr><w:sz w:val="22"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/>
+    <w:pPr><w:spacing w:before="240" w:after="120"/></w:pPr>
+    <w:rPr><w:b/><w:sz w:val="28"/><w:color w:val="004D40"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/>
+    <w:pPr><w:spacing w:before="200" w:after="100"/></w:pPr>
+    <w:rPr><w:b/><w:sz w:val="24"/><w:color w:val="00695C"/></w:rPr></w:style>
+</w:styles>`;
+  const DOC=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body>
+${bodyXml}
+<w:sectPr><w:pgMar w:top="1134" w:right="850" w:bottom="1134" w:left="1134"/></w:sectPr>
+</w:body></w:document>`;
+  const CORE=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties"
+  xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:creator>BaaS Monitor</dc:creator>
+  <dc:title>${esc(filename)}</dc:title>
+</cp:coreProperties>`;
+
+  try{
+    const zip=new JSZip();
+    zip.file('[Content_Types].xml',CT);
+    zip.file('_rels/.rels',RELS);
+    zip.file('word/document.xml',DOC);
+    zip.file('word/_rels/document.xml.rels',WORD_RELS);
+    zip.file('word/styles.xml',STYLES);
+    zip.file('docProps/core.xml',CORE);
+    const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    saveAs(blob,filename);
+    showToast(`"${filename}" yükləndi.`);
+  }catch(e){
+    showToast('Sənəd yaradılarkən xəta baş verdi.',false);
+    console.error(e);
+  }
+}
+
+// ═══════════════════════ REFRESH ALL
+function refreshAll(){
+  renderDashboard();
+  renderPartnersPage();
+  initDonutChart();
+  initTxnFilters();
+  applyFilters();
+  if(currentRole==='administrator') renderUsersPage();
+}
+
+// ═══════════════════════ INIT
+async function initApp(){
+  showSyncBadge(sbOn()?'Yüklənir…':'Demo rejim','#f57c00');
+  await loadData();      // fetch from Supabase (or no-op if not configured)
+  initTrendChart();
+  initDonutChart();
+  renderDashboard();
+  renderPartnersPage();
+  initTxnFilters();
+  applyFilters();
+  if(currentRole==='administrator') renderUsersPage();
+  if(!sbOn()) showSyncBadge('Demo rejim (Supabase qoşulmayıb)','#94a3b8');
+}
+</script>
+</body>
+</html>
