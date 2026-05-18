@@ -310,6 +310,9 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
       <div class="topbar-title" id="topbarTitle">Dashboard</div>
       <div class="topbar-right">
         <span class="sync-pill"><i class="fa-solid fa-rotate"></i> <span id="syncBadge">Yüklənir…</span></span>
+        <button class="btn btn-outline btn-sm" onclick="manualRefresh()" title="Verilənləri yenidən yüklə" style="font-size:12px">
+          <i class="fa-solid fa-arrows-rotate"></i> Yenilə
+        </button>
       </div>
     </div>
 
@@ -895,6 +898,50 @@ function calcCommission(tiers, volume){
   return{rate:Number(last.rate),commission:volume*Number(last.rate)/100,tier:last};
 }
 
+// Returns {rate, tierNo, totalTiers, turnover, tier} for a partner's CURRENT
+// applicable commission tier. Tier is selected by the partner's accumulated
+// turnover from the active deal's start_date through today.
+// Returns null when the partner has no active package or no active fee_package.
+function currentApplicableTier(partnerId){
+  // Find the active fee_package for this partner
+  const fps = (FEE_PACKAGES[partnerId]||[]).filter(f => f.status === 'active');
+  if(!fps.length || !fps[0].tiers || !fps[0].tiers.length) return null;
+  const fp = fps[0];
+  // Find the period start: prefer deal.start_date, fall back to the active package's from
+  let startISO = '';
+  if (DEALS && DEALS.length) {
+    const deal = DEALS.find(d => d.partner_id === partnerId && d.status === 'active');
+    if (deal && deal.start_date) startISO = deal.start_date;
+  }
+  if (!startISO) {
+    const pkg = PACKAGES.find(p => p.pid === partnerId && p.status === 'active');
+    if (pkg && pkg.from) startISO = pkg.from;
+  }
+  if (!startISO) return null; // No package window → cannot scope turnover
+  const todayISO = new Date().toISOString().slice(0,10);
+  // Accumulate turnover from package start to today, for this partner's prod_types
+  let turnover = 0;
+  TRANSACTIONS.forEach(t => {
+    if (!t.op_date || t.op_date < startISO || t.op_date > todayISO) return;
+    const pid = PROD_TYPE_MAP[t.prod_type];
+    if (pid !== partnerId) return;
+    turnover += t.amt;
+  });
+  // Find the tier the turnover falls into
+  const tiers = fp.tiers;
+  for (let i = 0; i < tiers.length; i++) {
+    const t  = tiers[i];
+    const lo = Number(t.from) || 0;
+    const hi = (t.to === null || t.to === undefined) ? Infinity : Number(t.to);
+    if (turnover >= lo && turnover <= hi) {
+      return {rate:Number(t.rate), tierNo:i+1, totalTiers:tiers.length, turnover, tier:t, periodStart:startISO};
+    }
+  }
+  // Above all tiers → use the last one
+  const last = tiers[tiers.length-1];
+  return {rate:Number(last.rate), tierNo:tiers.length, totalTiers:tiers.length, turnover, tier:last, periodStart:startISO};
+}
+
 function buildFeeStats(){
   const allFps=Object.values(FEE_PACKAGES).flat();
   const activeFps=allFps.filter(fp=>fp.status==='active');
@@ -929,6 +976,7 @@ let CARDS = [];           // populated from Supabase cards in loadData()
 let TRANSACTIONS = [];    // populated from Supabase transactions in loadData() (last 90 days)
 let PROD_TYPES = [];      // populated from Supabase prod_types in loadData()
 let PROD_TYPE_MAP = {};   // prod_type code → partner_id (built from PROD_TYPES)
+let DEALS = [];           // populated from Supabase package_deals in loadData() (migration v8)
 
 
 // ═══════════════════════ SUPABASE CONFIG
@@ -1025,6 +1073,16 @@ function prodTypeFromDb(r){
     active:r.active!==false
   };
 }
+function dealFromDb(r){
+  return {
+    id:Number(r.id), partner_id:Number(r.partner_id),
+    start_date:r.start_date||'', end_date:r.end_date||'',
+    status:r.status||'active',
+    contract_no:r.contract_no||'',
+    contract_date:r.contract_date||'',
+    notes:r.notes||''
+  };
+}
 
 // ── Load all data from Supabase ──
 async function loadData(){
@@ -1084,6 +1142,15 @@ async function loadData(){
       console.warn('country_data not found, using defaults:',e.message);
     }
 
+
+    // ── package_deals (migration v8) — parent of packages/fee_packages ──
+    try{
+      const dealRows = await sb('GET','package_deals',null,'?order=id')||[];
+      DEALS = dealRows.map(dealFromDb);
+    }catch(e){
+      console.warn('package_deals not found, run migration v8:', e.message);
+      DEALS = [];
+    }
 
     // ── DWH-sourced tables (migration v6) ───────────────────────────────
     // prod_types — joins DWH PROD_TYPE codes to our partners table
@@ -1274,12 +1341,33 @@ const PAGE_TITLES={
   users:'İstifadəçilər & Rollar / Users & Roles',
   products:'Məhsul Növləri / Product Types'
 };
-function showPage(id){
+async function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   document.querySelector(`[data-page="${id}"]`).classList.add('active');
   document.getElementById('topbarTitle').textContent=PAGE_TITLES[id];
+  // Refresh from Supabase, then re-render the destination so the user always
+  // sees the latest data (admins editing in another tab will become visible).
+  await loadData();
+  if (id === 'dashboard')        renderDashboard();
+  else if (id === 'partners')    renderPartnersPage();
+  else if (id === 'transactions'){ initTxnFilters(); applyFilters(); }
+  else if (id === 'users')       { renderUsersPage(); }
+  else if (id === 'products')    { renderProductsPage(); }
+}
+
+// Explicit refresh button — pulls data + re-renders whichever page is active.
+async function manualRefresh(){
+  const active = document.querySelector('.nav-item.active');
+  const id = active ? active.getAttribute('data-page') : 'dashboard';
+  await loadData();
+  if (id === 'dashboard')        renderDashboard();
+  else if (id === 'partners')    renderPartnersPage();
+  else if (id === 'transactions'){ initTxnFilters(); applyFilters(); }
+  else if (id === 'users')       { renderUsersPage(); }
+  else if (id === 'products')    { renderProductsPage(); }
+  showToast('Verilənlər yeniləndi', true);
 }
 
 // ═══════════════════════ CHARTS
@@ -1489,35 +1577,49 @@ function renderDashboard(){
   const allFps=Object.values(FEE_PACKAGES).flat().filter(fp=>fp.status==='active');
   let ftHtml=`<thead><tr>
     <th>Tərəfdaş</th><th>Paket Adı</th><th>Müddət</th>
-    <th class="r">Tier Sayı</th><th class="r">Min Dərəcə</th><th class="r">Maks Dərəcə</th><th>Status</th>
-    <th>Tierlər</th>
+    <th class="r">Cari Dərəcə</th><th class="r">Tier</th>
+    <th class="r">Cari Dövriyyə</th><th>Status</th>
   </tr></thead><tbody>`;
   if(allFps.length){
     allFps.forEach(fp=>{
       const p=PARTNERS.find(x=>x.id===fp.partner_id);
       const tiers=fp.tiers||[];
-      const rates=tiers.map(t=>Number(t.rate)).filter(r=>!isNaN(r));
-      const minR=rates.length?Math.min(...rates):0;
-      const maxR=rates.length?Math.max(...rates):0;
-      const tierPills=tiers.map((t,i)=>{
-        const lo=fmtN(t.from);
-        const hi=t.to===null||t.to===undefined?'∞':fmtN(t.to);
-        return`<span style="display:inline-flex;align-items:center;background:#e3f2fd;color:#1565c0;
-          border-radius:12px;padding:1px 7px;font-size:10px;font-weight:700;margin:1px">${lo}–${hi} ₼ → ${t.rate}%</span>`;
-      }).join('');
+      const cur = p ? currentApplicableTier(p.id) : null;
+      // Show period from deal if present, otherwise fp.effective_from/_to
+      const deal = (DEALS||[]).find(d => p && d.partner_id===p.id && d.status==='active');
+      const periodLabel = deal && deal.start_date
+        ? fmtDate(deal.start_date)+' – '+(deal.end_date?fmtDate(deal.end_date):'∞')
+        : (fp.effective_from?fmtDate(fp.effective_from)+' – '+fmtDate(fp.effective_to):'Müddətsiz');
+
+      let rateCell, tierCell, turnoverCell;
+      if (cur) {
+        rateCell     = `<strong style="color:#1565c0">${cur.rate}%</strong>`;
+        tierCell     = `<span style="font-size:11px;color:#64748b">${cur.tierNo}/${cur.totalTiers}</span>`;
+        turnoverCell = `<span style="font-size:11px;color:#64748b" title="Paket başlanğıcından bu günə qədər">${fmtMoney(cur.turnover)}</span>`;
+      } else if (tiers.length) {
+        // Fee package exists but no active deal/package → fall back to lowest tier rate
+        const firstRate = Number(tiers[0].rate);
+        rateCell     = `<span style="color:#94a3b8" title="Aktiv paket yoxdur — ən aşağı tier göstərilir">${firstRate}%</span>`;
+        tierCell     = `<span style="font-size:11px;color:#94a3b8">1/${tiers.length}</span>`;
+        turnoverCell = `<span style="font-size:11px;color:#94a3b8">—</span>`;
+      } else {
+        rateCell     = `<span style="color:#94a3b8">—</span>`;
+        tierCell     = `<span style="font-size:11px;color:#94a3b8">—</span>`;
+        turnoverCell = `<span style="font-size:11px;color:#94a3b8">—</span>`;
+      }
+
       ftHtml+=`<tr>
         <td><strong>${p?p.name:'—'}</strong></td>
         <td style="font-size:12px">${fp.name}</td>
-        <td style="font-size:11px;color:#64748b">${fp.effective_from?fmtDate(fp.effective_from)+' – '+fmtDate(fp.effective_to):'Müddətsiz'}</td>
-        <td class="r"><strong>${tiers.length}</strong></td>
-        <td class="r" style="color:#2e7d32;font-weight:700">${maxR}%</td>
-        <td class="r" style="color:#1565c0;font-weight:700">${minR}%</td>
-        <td>${badge('active')}</td>
-        <td style="max-width:280px">${tierPills}</td>
+        <td style="font-size:11px;color:#64748b">${periodLabel}</td>
+        <td class="r">${rateCell}</td>
+        <td class="r">${tierCell}</td>
+        <td class="r">${turnoverCell}</td>
+        <td>${badge(fp.status||'active')}</td>
       </tr>`;
     });
   }else{
-    ftHtml+=`<tr><td colspan="8" style="color:#94a3b8;text-align:center;padding:16px">Aktiv komisyon paketi yoxdur</td></tr>`;
+    ftHtml+=`<tr><td colspan="7" style="color:#94a3b8;text-align:center;padding:16px">Aktiv komisyon paketi yoxdur</td></tr>`;
   }
   document.getElementById('feePackagesTable').innerHTML=ftHtml+'</tbody>';
 
@@ -1812,7 +1914,10 @@ async function savePackage(){
 }
 
 // ═══════════════════════ DETAIL MODAL
-function openDetailModal(pid){
+async function openDetailModal(pid){
+  // Refresh from Supabase so the modal opens with the freshest data
+  try { await loadData(); } catch(e) { /* show whatever we have if Supabase is unreachable */ }
+
   const p=PARTNERS.find(x=>x.id===pid);
   if(!p)return;
   const sum=buildSummary();
