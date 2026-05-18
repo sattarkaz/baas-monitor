@@ -1742,20 +1742,21 @@ function renderPartnersPage(){
     const fp=fps[0];
     let feeCell;
     if(fp){
-      const tiers=fp.tiers||[];
-      const rates=tiers.map(t=>Number(t.rate));
-      const minR=rates.length?Math.min(...rates):0;
-      const maxR=rates.length?Math.max(...rates):0;
-      // Estimated commission
-      const vol=s.vol||0;
-      const{commission}=calcCommission(tiers,vol);
-      feeCell=`<div style="font-size:11px;font-weight:600;color:#1565c0">${fp.name.length>22?fp.name.slice(0,22)+'…':fp.name}</div>
-        <div style="font-size:10px;color:#64748b;margin-top:1px">
-          ${maxR}% – ${minR}% · ${tiers.length} tier
-        </div>
-        ${vol>0?`<div style="font-size:10px;color:#6a1b9a;margin-top:1px">
-          <i class="fa-solid fa-coins"></i> ~${fmtMoney(commission)} / ay
-        </div>`:''}`;
+      const cur = currentApplicableTier(p.id);
+      const tiers = fp.tiers || [];
+      const nameLine = `<div style="font-size:11px;font-weight:600;color:#1565c0">${fp.name.length>22?fp.name.slice(0,22)+'…':fp.name}</div>`;
+      if (cur) {
+        feeCell = nameLine
+          + `<div style="font-size:10px;color:#64748b;margin-top:1px"><strong style="color:#1565c0">${cur.rate}%</strong> · tier ${cur.tierNo}/${cur.totalTiers}</div>`
+          + `<div style="font-size:10px;color:#6a1b9a;margin-top:1px"><i class="fa-solid fa-coins"></i> ${fmtMoney(cur.turnover)} dövriyyə</div>`;
+      } else if (tiers.length) {
+        const firstRate = Number(tiers[0].rate);
+        feeCell = nameLine
+          + `<div style="font-size:10px;color:#94a3b8;margin-top:1px">${firstRate}% · tier 1/${tiers.length}</div>`
+          + `<div style="font-size:10px;color:#94a3b8;margin-top:1px">Paket başlanğıcı yoxdur</div>`;
+      } else {
+        feeCell = nameLine + `<div style="font-size:10px;color:#94a3b8">—</div>`;
+      }
     }else if(p.status==='active'){
       feeCell=`<span style="color:#e53935;font-size:11px"><i class="fa-solid fa-circle-exclamation"></i> Paket yoxdur</span>`;
     }else{
@@ -2603,154 +2604,140 @@ function calcFeeResult(pid){
   </span>`;
 }
 
-// ═══════════════════════ DOCX GENERATION (JSZip)
+// ═══════════════════════ DOCX GENERATION (template-driven)
+// Downloads the appropriate .docx template from the Supabase
+// contract-templates bucket, opens it as a zip, substitutes every
+// {{tag}} placeholder with the partner / deal / fee_package data, and
+// saves the result. No contract text is hardcoded here — all wording
+// lives in the templates uploaded to Storage.
+const TEMPLATE_BUCKET = 'contract-templates';
+const TEMPLATE_FILES = {
+  contract: 'BaaS_Contract_template.docx',
+  tariff:   'BaaS_Annex_template.docx',  // "Tarif" button generates the Annex
+  annex:    'BaaS_Annex_template.docx',
+  nda:      'BaaS_NDA_template.docx',
+};
+const FORM_AZ = {MMC:'Məhdud Məsuliyyətli Cəmiyyəti', ASC:'Açıq Səhmdar Cəmiyyəti', SC:'Səhmdar Cəmiyyəti', QSC:'Qapalı Səhmdar Cəmiyyəti', IP:'Fərdi Sahibkar'};
+const FORM_EN = {MMC:'LLC', ASC:'OJSC', SC:'JSC', QSC:'CJSC', IP:'Individual Entrepreneur'};
+const MONTHS_AZ = ['yanvar','fevral','mart','aprel','may','iyun','iyul','avqust','sentyabr','oktyabr','noyabr','dekabr'];
+
+function _xmlEscape(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function _formatDateAz(iso){
+  if(!iso) return '';
+  const d = (iso instanceof Date) ? iso : new Date(iso);
+  if (isNaN(d.getTime())) return String(iso);
+  return `${d.getDate()} ${MONTHS_AZ[d.getMonth()]} ${d.getFullYear()}-cı il`;
+}
+function _formatDateEn(iso){
+  if(!iso) return '';
+  const d = (iso instanceof Date) ? iso : new Date(iso);
+  if (isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
+}
+
+function _buildTagMap(partner, deal, pkg, feePkg){
+  const year = new Date().getFullYear();
+  const today = new Date().toISOString().slice(0,10);
+  const m = {};
+
+  // Partner-identity fields
+  m['partner_name']               = partner.name || '';
+  m['partner_form']               = partner.form || 'MMC';
+  m['partner_form_az']            = FORM_AZ[partner.form] || partner.form || '';
+  m['partner_form_en']            = FORM_EN[partner.form] || partner.form || '';
+  m['partner_address']            = partner.legal_address || '';
+  m['partner_voen']               = partner.voen || '';
+  m['partner_phone']              = partner.phone || '';
+  m['partner_email']              = partner.email || '';
+  m['partner_bank_name']          = partner.bank_name || '';
+  m['partner_bank_account']       = partner.bank_account || '';
+  m['partner_bank_code']          = partner.bank_code || '';
+  m['partner_signatory_name']     = partner.signatory || '';
+  m['partner_signatory_position'] = partner.signatory_pos || '';
+
+  // Contract / deal fields (prefer deal, fall back to package, then today)
+  const contractDateRaw = (deal && (deal.contract_date || deal.start_date)) || (pkg && pkg.from) || today;
+  m['contract_no']      = (deal && deal.contract_no) || (feePkg && feePkg.contract_no) || `BaaS-${String(partner.id).padStart(4,'0')}/${year}`;
+  m['contract_date_az'] = _formatDateAz(contractDateRaw);
+  m['contract_date_en'] = _formatDateEn(contractDateRaw);
+
+  // Annex + NDA metadata
+  m['annex_no'] = (feePkg && feePkg.annex_no) || 1;
+  m['nda_no']   = (feePkg && feePkg.nda_no) || '2566';
+
+  // Fee-table fields (annex_terms jsonb + package fallback)
+  const terms = (feePkg && feePkg.annex_terms) || {};
+  m['fee_card_count']            = terms.fee_card_count            || (pkg && pkg.size) || '';
+  m['fee_per_card']              = terms.fee_per_card              || '';
+  m['fee_txn_pct']               = terms.fee_txn_pct               || '';
+  m['fee_total_amount']          = terms.fee_total_amount          || '';
+  m['fee_total_amount_words_az'] = terms.fee_total_amount_words_az || '';
+  m['fee_period_start_year']     = terms.fee_period_start_year     || (deal && deal.start_date ? new Date(deal.start_date).getFullYear() : year);
+  m['fee_period_end_year']       = terms.fee_period_end_year       || (deal && deal.end_date   ? new Date(deal.end_date).getFullYear()   : year+1);
+  m['fee_payment_deadline_az']   = _formatDateAz(terms.fee_payment_deadline);
+  m['annex_date_az']             = _formatDateAz(terms.annex_date || today);
+  m['annex_valid_until_az']      = _formatDateAz(terms.annex_valid_until || (deal && deal.end_date));
+
+  return m;
+}
+
 async function generateDocx(pid, type){
-  const p=PARTNERS.find(x=>x.id===pid);
-  if(!p){showToast('Tərəfdaş tapılmadı!',false);return;}
-  if(typeof JSZip==='undefined'||typeof saveAs==='undefined'){
-    showToast('JSZip/FileSaver yüklənmir. İnternet bağlantısını yoxlayın.',false);return;
+  if (typeof JSZip === 'undefined' || typeof saveAs === 'undefined') {
+    showToast('JSZip/FileSaver yüklənmir. İnternet bağlantısını yoxlayın.', false); return;
   }
-  const year=new Date().getFullYear();
-  const contractNum=`BaaS-${String(pid).padStart(4,'0')}/${year}`;
-  const months=['yanvar','fevral','mart','aprel','may','iyun','iyul','avqust','sentyabr','oktyabr','noyabr','dekabr'];
-  const now=new Date();
-  const dateStr=`${now.getDate()} ${months[now.getMonth()]} ${year} il`;
-  const party1='Azərbaycan Beynəlxalq Bankı ASC';
-  const party1Signatory='Cəlal Hüseynli, Baş İcraçı Direktor';
+  const tplName = TEMPLATE_FILES[type];
+  if (!tplName) { showToast(`Naməlum şablon növü: ${type}`, false); return; }
 
-  function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-  function para(text,bold=false,sz=22,color='000000',align='left'){
-    const jc=align==='center'?'<w:jc w:val="center"/>':align==='right'?'<w:jc w:val="right"/>':'';
-    const b=bold?'<w:b/>':'';
-    return`<w:p><w:pPr>${jc}</w:pPr><w:r><w:rPr>${b}<w:sz w:val="${sz}"/><w:color w:val="${color}"/></w:rPr><w:t xml:space="preserve">${esc(text)}</w:t></w:r></w:p>`;
-  }
-  function heading(text,lvl=1){
-    const sz=lvl===1?28:24;
-    return`<w:p><w:pPr><w:pStyle w:val="Heading${lvl}"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="${sz}"/><w:color w:val="004D40"/></w:rPr><w:t>${esc(text)}</w:t></w:r></w:p>`;
-  }
-  function blank(){return`<w:p><w:r><w:t></w:t></w:r></w:p>`;}
-  function field(label,value){
-    return`<w:p><w:r><w:rPr><w:b/><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">${esc(label)}: </w:t></w:r><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t>${esc(value||'—')}</w:t></w:r></w:p>`;
-  }
+  const partner = PARTNERS.find(x => x.id === pid);
+  if (!partner) { showToast('Tərəfdaş tapılmadı!', false); return; }
 
-  let bodyXml='';
-  let filename='';
+  const deal    = (DEALS    || []).find(d => d.partner_id === pid && d.status === 'active') || null;
+  const pkg     = (PACKAGES || []).find(pk => pk.pid === pid && pk.status === 'active')     || null;
+  const feePkg  = (FEE_PACKAGES[pid] || []).find(fp => fp.status === 'active')               || null;
 
-  if(type==='contract'){
-    filename=`Müqavilə_${p.name}_${year}.docx`;
-    bodyXml=
-      heading(`BaaS XİDMƏT MÜQAVİLƏSİ № ${contractNum}`)+
-      para(`Bakı şəhəri                                                          ${dateStr}`,false,20,'64748b','right')+blank()+
-      para(`Bir tərəfdən — ${party1} ("Bank"), digər tərəfdən — ${p.name} ("Tərəfdaş") aşağıdakı şərtlər əsasında bu Müqaviləni bağladılar:`,false,22)+blank()+
-      heading('1. MÜQAVİLƏNİN MÖVZUSİ',2)+
-      para('1.1. Bank Tərəfdaşa BaaS (Banking-as-a-Service) platforması çərçivəsində kart emissiyası, ödəniş emalı və müvafiq maliyyə xidmətləri göstərir.')+
-      para('1.2. Tərəfdaş Bank tərəfindən müəyyən edilmiş qaydalar əsasında son müştərilərə xidmət göstərir.')+blank()+
-      heading('2. TƏRƏFLƏRİN REKVİZİTLƏRİ',2)+
-      para('Tərəfdaş məlumatları:',true)+
-      field('Şirkətin adı',`${p.name} (${p.form})`)+
-      field('VÖEN',p.voen)+
-      field('Hüquqi ünvan',p.legal_address)+
-      field('İmzalayan',`${p.signatory}, ${p.signatory_pos}`)+
-      field('Bank',p.bank_name)+
-      field('IBAN',p.bank_account)+
-      field('MFO',p.bank_code)+blank()+
-      heading('3. MÜQAVİLƏNİN MÜDDƏTİ',2)+
-      para(`3.1. Müqavilə imzalandığı tarixdən (${dateStr}) qüvvəyə minir.`)+
-      para('3.2. Müqavilə 1 (bir) il müddətinə bağlanır, tərəflərdən biri imtina etmədikdə avtomatik uzadılır.')+blank()+
-      heading('4. İMZALAR',2)+blank()+
-      para('BANK tərəfindən:',true)+para(party1Signatory)+blank()+
-      para('TƏRƏFDAŞ tərəfindən:',true)+para(`${p.signatory}, ${p.signatory_pos}`)+para(p.name);
-  } else if(type==='tariff'){
-    filename=`Tarif_Əlavəsi_${p.name}_${year}.docx`;
-    bodyXml=
-      heading(`TARİF ƏLAVƏSİ № ${contractNum}-T`)+
-      para(`Bakı şəhəri                                                          ${dateStr}`,false,20,'64748b','right')+blank()+
-      para(`Bu Tarif Əlavəsi № ${contractNum} müqaviləsinə əlavə olunur.`,false,22)+blank()+
-      heading('TARİF CƏDVƏLİ',2)+blank();
-    // simple tariff table as text
-    const tariffs=[
-      ['Kart emissiyası','3.00 ₼ / kart'],['Aylıq xidmət haqqı','1.20 ₼ / aktiv kart'],
-      ['Daxili ödəniş','0.30 ₼ / əməliyyat'],['Xarici ödəniş','0.80 ₼ / əməliyyat'],
-      ['ATM nağd çıxarma','0.50 ₼ + 0.3%'],['POS əməliyyatı','0.20 ₼ + 0.2%'],
-    ];
-    tariffs.forEach(([svc,price])=>{ bodyXml+=field(svc,price); });
-    bodyXml+=blank()+
-      para('Yuxarıdakı tariflər ƏDV-siz göstərilib. ƏDV Azərbaycan qanunvericiliyinə uyğun hesablanır.',false,18,'64748b')+blank()+
-      heading('İMZALAR',2)+blank()+
-      para('BANK: '+party1Signatory,false,20)+blank()+
-      para('TƏRƏFDAŞ: '+p.signatory+', '+p.signatory_pos+' — '+p.name,false,20);
-  } else {
-    filename=`NDA_${p.name}_${year}.docx`;
-    bodyXml=
-      heading(`KONFİDENSİALLIQ MÜQAVİLƏSİ (NDA) № ${contractNum}-NDA`)+
-      para(`Bakı şəhəri                                                          ${dateStr}`,false,20,'64748b','right')+blank()+
-      para(`Bu Müqavilə ${party1} ("Açıqlayan") ilə ${p.name} ("Alan") arasında bağlanır.`,false,22)+blank()+
-      heading('1. MƏQSƏD',2)+
-      para('Tərəflər BaaS əməkdaşlığı çərçivəsində mübadiləsini etdikləri məxfi məlumatların qorunması məqsədilə bu sazişi imzalayırlar.')+blank()+
-      heading('2. MƏXFİ MƏLUMAT',2)+
-      para('2.1. Məxfi məlumat dedikdə: texnoloji həllər, API sənədləri, müştəri məlumatları, maliyyə şərtləri, biznes strategiyaları nəzərdə tutulur.')+
-      para('2.2. Tərəflərdən hər biri öyrəndiyi məxfi məlumatı üçüncü şəxslərə açıqlamamağı öhdəsinə götürür.')+blank()+
-      heading('3. MÜDDƏT',2)+
-      para(`3.1. Məxfilik öhdəliyi bu Müqavilənin imzalandığı tarixdən (${dateStr}) etibarən 3 (üç) il müddətinə qüvvədədir.`)+blank()+
-      heading('4. İMZALAR',2)+blank()+
-      para('AÇIQLAYAN: '+party1Signatory,false,20)+blank()+
-      para('ALAN: '+p.signatory+', '+p.signatory_pos+' — '+p.name,false,20);
+  // Download the template from Supabase Storage
+  showToast(`Şablon yüklənir: ${tplName}…`, true);
+  let tplBlob;
+  try {
+    const url = `${SUPABASE_URL}/storage/v1/object/${TEMPLATE_BUCKET}/${encodeURIComponent(tplName)}`;
+    const r = await fetch(url, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status} — ${tplName} bucket-də tapılmadı`);
+    tplBlob = await r.blob();
+  } catch (e) {
+    showToast(`Şablon endirilə bilmədi: ${e.message}`, false);
+    console.error(e);
+    return;
   }
 
-  const CT=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
-  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
-  <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
-</Types>`;
-  const RELS=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
-  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
-</Relationships>`;
-  const WORD_RELS=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
-</Relationships>`;
-  const STYLES=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-  <w:style w:type="paragraph" w:styleId="Normal"><w:name w:val="Normal"/>
-    <w:rPr><w:sz w:val="22"/></w:rPr></w:style>
-  <w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/>
-    <w:pPr><w:spacing w:before="240" w:after="120"/></w:pPr>
-    <w:rPr><w:b/><w:sz w:val="28"/><w:color w:val="004D40"/></w:rPr></w:style>
-  <w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/>
-    <w:pPr><w:spacing w:before="200" w:after="100"/></w:pPr>
-    <w:rPr><w:b/><w:sz w:val="24"/><w:color w:val="00695C"/></w:rPr></w:style>
-</w:styles>`;
-  const DOC=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-<w:body>
-${bodyXml}
-<w:sectPr><w:pgMar w:top="1134" w:right="850" w:bottom="1134" w:left="1134"/></w:sectPr>
-</w:body></w:document>`;
-  const CORE=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties"
-  xmlns:dc="http://purl.org/dc/elements/1.1/">
-  <dc:creator>BaaS Monitor</dc:creator>
-  <dc:title>${esc(filename)}</dc:title>
-</cp:coreProperties>`;
+  // Open the template, substitute tags, repack
+  try {
+    const zip = await JSZip.loadAsync(tplBlob);
+    const docPart = zip.file('word/document.xml');
+    if (!docPart) throw new Error('word/document.xml şablonda tapılmadı');
+    let docXml = await docPart.async('string');
 
-  try{
-    const zip=new JSZip();
-    zip.file('[Content_Types].xml',CT);
-    zip.file('_rels/.rels',RELS);
-    zip.file('word/document.xml',DOC);
-    zip.file('word/_rels/document.xml.rels',WORD_RELS);
-    zip.file('word/styles.xml',STYLES);
-    zip.file('docProps/core.xml',CORE);
-    const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-    saveAs(blob,filename);
-    showToast(`"${filename}" yükləndi.`);
-  }catch(e){
-    showToast('Sənəd yaradılarkən xəta baş verdi.',false);
+    const tags = _buildTagMap(partner, deal, pkg, feePkg);
+    for (const [k, v] of Object.entries(tags)) {
+      const re = new RegExp(`\{\{\s*${k}\s*\}\}`, 'g');
+      docXml = docXml.replace(re, _xmlEscape(v));
+    }
+    zip.file('word/document.xml', docXml);
+
+    const blob = await zip.generateAsync({
+      type: 'blob',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    });
+
+    const prefix = type === 'nda' ? 'NDA' : type === 'contract' ? 'Müqavilə' : 'Əlavə';
+    const safeName = (partner.name || 'partner').replace(/[\\/:*?"<>|]/g, '_');
+    const filename = `${prefix}_${safeName}_${new Date().getFullYear()}.docx`;
+    saveAs(blob, filename);
+    showToast(`"${filename}" yükləndi.`, true);
+  } catch (e) {
+    showToast(`Sənəd yaradılarkən xəta: ${e.message}`, false);
     console.error(e);
   }
 }
