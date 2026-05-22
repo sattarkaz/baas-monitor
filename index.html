@@ -422,14 +422,6 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
         <div class="fg"><label><i class="fa-solid fa-calendar-days"></i> Başlanğıc</label>
           <input type="date" id="fFrom"></div>
         <div class="fg"><label>&nbsp;</label><input type="date" id="fTo"></div>
-        <div class="fg"><label><i class="fa-solid fa-coins"></i> Valyuta</label>
-          <select id="fCurrency">
-            <option value="AZN">AZN — Manat</option>
-            <option value="USD">USD — Dollar</option>
-            <option value="EUR">EUR — Avro</option>
-            <option value="TRY">TRY — Türk lirəsi</option>
-            <option value="RUB">RUB — Rubl</option>
-          </select></div>
         <div class="fg"><label><i class="fa-solid fa-tag"></i> MCC</label>
           <select id="fMcc"><option value="">Bütün MCC</option></select></div>
         <div class="fg"><label><i class="fa-solid fa-earth-europe"></i> Ölkə</label>
@@ -1171,11 +1163,9 @@ async function loadData(){
       console.warn('cards not found, run migration v6:', e.message);
     }
 
-    // transactions — last 90 days for charts (older history stays in DWH/cold storage)
+    // transactions — all rows (no date cap; filter happens in the UI)
     try{
-      const since = new Date(); since.setDate(since.getDate()-90);
-      const sinceISO = since.toISOString().slice(0,10);
-      const txnRows = await sb('GET','transactions',null,`?op_date=gte.${sinceISO}&order=op_date.desc&limit=200000`)||[];
+      const txnRows = await sb('GET','transactions',null,`?order=op_date.desc&limit=500000`)||[];
       if(txnRows.length) TRANSACTIONS = txnRows.map(txnFromDb);
     }catch(e){
       console.warn('transactions not found, run migration v6:', e.message);
@@ -1245,9 +1235,7 @@ function fmtMoney(n, cur='AZN') {
   const sym  = SYMBOLS[cur]||cur;
   const rate = RATES[cur]||1;
   const v    = n * rate;
-  if (v>=1e6) return (v/1e6).toFixed(2)+' mln '+sym;
-  if (v>=1e3) return (v/1e3).toFixed(1)+' min '+sym;
-  return v.toFixed(2)+' '+sym;
+  return sym+' '+fmtN(v,2);
 }
 const BADGE_MAP = {
   active:   ['Aktiv / Active','b-active'],
@@ -1374,12 +1362,16 @@ async function manualRefresh(){
 let trendChart,donutChart,barChart,feeRateChart;
 function destroyChart(c){if(c){try{c.destroy()}catch(e){}}}
 
-function genDailyData(partnerId=0){
-  // Aggregate real transactions by day over the last 30 days.
+function genDailyData(partnerId=0, fromISO=null, toISO=null){
+  // Aggregate real transactions by day within the given date range.
   // partnerId=0 → all partners; otherwise filter via PROD_TYPE_MAP.
+  // When fromISO/toISO are omitted, defaults to last 30 days (dashboard use).
+  const today = new Date();
+  const endDate   = toISO   ? new Date(toISO)   : new Date(today);
+  const startDate = fromISO ? new Date(fromISO)  : new Date(new Date().setDate(today.getDate()-29));
+
   const buckets = {};
-  for(let i = 29; i >= 0; i--){
-    const d = new Date(); d.setDate(d.getDate()-i);
+  for(let d = new Date(startDate); d <= endDate; d.setDate(d.getDate()+1)){
     const iso = d.toISOString().slice(0,10);
     const label = `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;
     buckets[iso] = {label, vol:0, cnt:0};
@@ -1442,10 +1434,10 @@ function initDonutChart(){
   });
 }
 
-function renderBarChart(partnerId,currency){
+function renderBarChart(partnerId,currency,fromISO=null,toISO=null){
   const sym=SYMBOLS[currency]||'₼';
   const rate=RATES[currency]||1;
-  const daily=genDailyData(partnerId||0);
+  const daily=genDailyData(partnerId||0,fromISO,toISO);
   destroyChart(barChart);
   barChart=new Chart(document.getElementById('barChart').getContext('2d'),{
     type:'bar',
@@ -2145,17 +2137,19 @@ function initTxnFilters(){
 
 function applyFilters(){
   const pid=parseInt(document.getElementById('fPartner').value)||0;
-  const cur=document.getElementById('fCurrency').value||'AZN';
+  const cur='AZN';
   const mccFilter=document.getElementById('fMcc').value;
   const ctryFilter=document.getElementById('fCountry').value;
-  const sym=SYMBOLS[cur]||'₼';const rate=RATES[cur]||1;
+  const fromISO=document.getElementById('fFrom').value||null;
+  const toISO=document.getElementById('fTo').value||null;
+  const sym='₼';const rate=1;
 
   const pObj=pid?PARTNERS.find(p=>p.id===pid):null;
   document.getElementById('barChartTitle').textContent=
     `Gündəlik Əməliyyat Həcmi — ${pObj?pObj.name:'Bütün Tərəfdaşlar'}`;
-  renderBarChart(pid,cur);
+  renderBarChart(pid,cur,fromISO,toISO);
 
-  const daily=genDailyData(pid||0);
+  const daily=genDailyData(pid||0,fromISO,toISO);
   const totalVol=daily.reduce((s,d)=>s+d.vol,0)*rate;
   const totalCnt=daily.reduce((s,d)=>s+d.cnt,0);
   const avgTkt=totalCnt>0?totalVol/totalCnt:0;
@@ -2169,8 +2163,28 @@ function applyFilters(){
       <div class="kpi-val" style="font-size:18px">${sym} ${fmtN(avgTkt,2)}</div>
       <div class="kpi-sub">Orta çek məbləği</div></div>`;
 
-  // MCC
-  let mccRows=mccFilter?MCC_DATA.filter(m=>m.mcc===mccFilter):MCC_DATA;
+  // Build filtered transaction set for MCC & Country breakdowns
+  const filteredTxns = TRANSACTIONS.filter(t => {
+    if(!t.op_date) return false;
+    if(fromISO && t.op_date < fromISO) return false;
+    if(toISO   && t.op_date > toISO)   return false;
+    if(pid > 0 && PROD_TYPE_MAP[t.prod_type] !== pid) return false;
+    return true;
+  });
+
+  // MCC — computed from filtered transactions
+  const mccAgg = {};
+  filteredTxns.forEach(t => {
+    if(!t.mcc) return;
+    if(!mccAgg[t.mcc]){
+      const info = MCC_DATA.find(m=>m.mcc===t.mcc)||{label:t.mcc};
+      mccAgg[t.mcc]={mcc:t.mcc,label:info.label,cnt:0,vol:0};
+    }
+    mccAgg[t.mcc].cnt++;
+    mccAgg[t.mcc].vol+=t.amt;
+  });
+  let mccRows=Object.values(mccAgg);
+  if(mccFilter) mccRows=mccRows.filter(m=>m.mcc===mccFilter);
   const mccTotal=mccRows.reduce((s,m)=>s+m.vol,0)||1;
   let mHtml=`<thead><tr><th>MCC</th><th>Kateqoriya</th><th class="r">Say</th><th class="r">Həcm</th><th style="min-width:80px">Pay</th></tr></thead><tbody>`;
   [...mccRows].sort((a,b)=>b.vol-a.vol).forEach(m=>{
@@ -2181,10 +2195,22 @@ function applyFilters(){
       <td><div class="share-bar-wrap"><div class="share-bar" style="width:${Math.min(100,pct)}%;background:#8e24aa"></div></div>
         <small style="font-size:10px;color:#64748b">${pct}%</small></td></tr>`;
   });
+  if(!mccRows.length) mHtml+=`<tr><td colspan="5" style="color:#94a3b8;text-align:center;padding:14px">Məlumat yoxdur</td></tr>`;
   document.getElementById('mccTable').innerHTML=mHtml+'</tbody>';
 
-  // Country
-  let ctRows=ctryFilter?COUNTRY_DATA.filter(c=>c.code===ctryFilter):COUNTRY_DATA;
+  // Country — computed from filtered transactions
+  const ctryAgg = {};
+  filteredTxns.forEach(t => {
+    const code=t.country||'XXX';
+    if(!ctryAgg[code]){
+      const info=COUNTRY_DATA.find(c=>c.code===code)||{name:'Unknown',flag:''};
+      ctryAgg[code]={code,name:info.name,flag:info.flag,cnt:0,vol:0};
+    }
+    ctryAgg[code].cnt++;
+    ctryAgg[code].vol+=t.amt;
+  });
+  let ctRows=Object.values(ctryAgg);
+  if(ctryFilter) ctRows=ctRows.filter(c=>c.code===ctryFilter);
   const ctTotal=ctRows.reduce((s,c)=>s+c.vol,0)||1;
   let cHtml=`<thead><tr><th>Ölkə</th><th class="r">Say</th><th class="r">Həcm</th><th style="min-width:80px">Pay</th></tr></thead><tbody>`;
   [...ctRows].sort((a,b)=>b.vol-a.vol).forEach(c=>{
@@ -2197,6 +2223,7 @@ function applyFilters(){
       <td><div class="share-bar-wrap"><div class="share-bar" style="width:${Math.min(100,pct)}%;background:#00897b"></div></div>
         <small style="font-size:10px;color:#64748b">${pct}%</small></td></tr>`;
   });
+  if(!ctRows.length) cHtml+=`<tr><td colspan="4" style="color:#94a3b8;text-align:center;padding:14px">Məlumat yoxdur</td></tr>`;
   document.getElementById('countryTable').innerHTML=cHtml+'</tbody>';
 
   // Per-partner
@@ -2233,7 +2260,6 @@ function applyFilters(){
 
 function resetFilters(){
   document.getElementById('fPartner').value='0';
-  document.getElementById('fCurrency').value='AZN';
   document.getElementById('fMcc').value='';document.getElementById('fCountry').value='';
   const to=new Date();const from=new Date();from.setDate(from.getDate()-29);
   document.getElementById('fTo').value=to.toISOString().slice(0,10);
