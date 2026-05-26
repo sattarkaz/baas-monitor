@@ -221,6 +221,18 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
 .form-section{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid #f1f5f9}
 .form-section:first-child{margin-top:0}
 
+/* MODAL TABS */
+.modal-tabs{display:flex;border-bottom:2px solid #e2e8f0;margin:-22px -22px 20px;padding:0 22px;background:#f8fafc;flex-wrap:wrap}
+.modal-tab-btn{padding:11px 16px;font-size:12px;font-weight:600;color:#64748b;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;font-family:inherit;transition:all .18s;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.modal-tab-btn:hover{color:#334155}
+.modal-tab-btn.active{color:#009688;border-bottom-color:#009688}
+.modal-tab-pane{display:none}.modal-tab-pane.active{display:block}
+
+/* TXN LIST PAGE */
+.txn-list-filter{background:#fff;border-radius:12px;padding:14px 18px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:18px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.txn-list-filter .fg input[type=text]{border:1.5px solid #e2e8f0;border-radius:7px;padding:7px 10px;font-size:12px;color:#334155;background:#fff;outline:none;font-family:inherit;min-width:160px}
+.txn-list-filter .fg input[type=text]:focus{border-color:#009688;box-shadow:0 0 0 3px rgba(0,150,136,.12)}
+
 /* MINI TILES */
 .mini-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
 .mini-tile{border-radius:8px;padding:13px;text-align:center}
@@ -282,6 +294,9 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
       <div class="nav-item" data-page="transactions" onclick="showPage('transactions')">
         <i class="fa-solid fa-chart-line"></i> Əməliyyatlar
       </div>
+      <div class="nav-item" data-page="txnlist" onclick="showPage('txnlist')">
+        <i class="fa-solid fa-list"></i> Əməliyyatlar Siyahısı
+      </div>
       <div class="nav-item" data-page="users" id="navUsers" style="display:none" onclick="showPage('users')">
         <i class="fa-solid fa-users-gear"></i> İstifadəçilər &amp; Rollar
       </div>
@@ -325,13 +340,11 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
       </div>
       <div class="chart-grid chart-grid-2">
         <div class="chart-card">
-          <div class="chart-title"><i class="fa-solid fa-chart-area"></i> Əməliyyat Həcmi — Son 30 Gün
-            <span class="src">transaction_daily_agg_cache</span></div>
+          <div class="chart-title"><i class="fa-solid fa-chart-area"></i> Əməliyyat Həcmi — Son 30 Gün</div>
           <canvas id="trendChart" height="120"></canvas>
         </div>
         <div class="chart-card" style="display:flex;flex-direction:column">
-          <div class="chart-title"><i class="fa-solid fa-chart-pie"></i> Tərəfdaşlar üzrə Paylanma (30g)
-            <span class="src">v_partner_txn_summary_30d</span></div>
+          <div class="chart-title"><i class="fa-solid fa-chart-pie"></i> Tərəfdaşlar üzrə Paylanma (30g)</div>
           <div style="flex:1;display:flex;align-items:center;justify-content:center">
             <canvas id="donutChart" style="max-height:200px;max-width:200px"></canvas>
           </div>
@@ -346,9 +359,7 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
       </div>
       <div class="tcard">
         <div class="tcard-hdr">
-          <h3><i class="fa-solid fa-layer-group" style="color:#009688"></i> Bütün Kart Paketləri — Cari Vəziyyət
-            <span class="sql-note">Oracle: SELECT cp.*, s.issued_cards, s.remaining_cards FROM card_packages cp JOIN package_usage_snapshot s ON …</span>
-          </h3>
+          <h3><i class="fa-solid fa-layer-group" style="color:#009688"></i> Bütün Kart Paketləri — Cari Vəziyyət</h3>
         </div>
         <table id="allPackagesTable"></table>
       </div>
@@ -390,9 +401,7 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
       <div class="kpi-grid kpi-grid-3" id="partnerKpis" style="margin-bottom:18px"></div>
       <div class="tcard">
         <div class="tcard-hdr">
-          <h3><i class="fa-solid fa-handshake" style="color:#009688"></i> BaaS Tərəfdaşları
-            <span class="sql-note">Oracle: SELECT … FROM partners p LEFT JOIN card_packages … LEFT JOIN package_usage_snapshot …</span>
-          </h3>
+          <h3><i class="fa-solid fa-handshake" style="color:#009688"></i> BaaS Tərəfdaşları</h3>
           <div style="display:flex;gap:8px">
             <button class="btn btn-success" onclick="openPartnerForm()">
               <i class="fa-solid fa-plus"></i> Yeni Tərəfdaş
@@ -411,9 +420,9 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
     <div id="page-transactions" class="page">
       <div class="notice info">
         <i class="fa-solid fa-circle-info"></i>
-        <div>Gündəlik aqreqatlar <strong>transaction_daily_agg_cache</strong>-dən.
-          MCC/Ölkə məlumatları DWH görünüşlərindən
-          (<strong>dwh_transaction_mcc_agg</strong>, <strong>dwh_transaction_country_agg</strong>).
+        <div>Bütün aqreqatlar birbaşa <strong>transactions</strong> cədvəlindən hesablanır
+          — başlıqdakı filterlər (tarix, tərəfdaş, MCC, ölkə) tətbiq edilir.
+          MCC və ölkə adları <strong>mcc_codes</strong> / <strong>country_labels</strong> cədvəllərindən oxunur.
         </div>
       </div>
       <div class="filter-bar">
@@ -426,6 +435,12 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
           <select id="fMcc"><option value="">Bütün MCC</option></select></div>
         <div class="fg"><label><i class="fa-solid fa-earth-europe"></i> Ölkə</label>
           <select id="fCountry"><option value="">Bütün Ölkələr</option></select></div>
+        <div class="fg"><label><i class="fa-solid fa-credit-card"></i> Növ</label>
+          <select id="fOpType">
+            <option value="">Hamısı</option>
+            <option value="D" selected>Debet</option>
+            <option value="C">Kredit</option>
+          </select></div>
         <div class="fg"><label>&nbsp;</label>
           <button class="btn btn-primary" onclick="applyFilters()"><i class="fa-solid fa-filter"></i> Tətbiq et</button></div>
         <div class="fg"><label>&nbsp;</label>
@@ -435,33 +450,60 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
       <div class="chart-card" style="margin-bottom:18px">
         <div class="chart-title"><i class="fa-solid fa-chart-bar"></i>
           <span id="barChartTitle">Gündəlik Əməliyyat Həcmi — Bütün Tərəfdaşlar</span>
-          <span class="src">Oracle: SELECT agg_date, SUM(transaction_volume) FROM transaction_daily_agg_cache WHERE … GROUP BY agg_date</span>
         </div>
         <canvas id="barChart" height="90"></canvas>
       </div>
       <div class="chart-grid chart-grid-2">
         <div class="tcard" style="margin-bottom:0">
-          <div class="tcard-hdr"><h3><i class="fa-solid fa-tag" style="color:#8e24aa"></i> MCC Bölgüsü
-            <span class="sql-note">Oracle: dwh_transaction_mcc_agg</span></h3></div>
+          <div class="tcard-hdr"><h3><i class="fa-solid fa-tag" style="color:#8e24aa"></i> MCC Bölgüsü</h3></div>
           <table id="mccTable"></table>
         </div>
         <div class="tcard" style="margin-bottom:0">
-          <div class="tcard-hdr"><h3><i class="fa-solid fa-earth-europe" style="color:#00897b"></i> Ölkə Bölgüsü
-            <span class="sql-note">Oracle: dwh_transaction_country_agg</span></h3></div>
+          <div class="tcard-hdr"><h3><i class="fa-solid fa-earth-europe" style="color:#00897b"></i> Ölkə Bölgüsü</h3></div>
           <table id="countryTable"></table>
         </div>
       </div>
       <div class="tcard" style="margin-top:18px">
-        <div class="tcard-hdr"><h3><i class="fa-solid fa-table" style="color:#009688"></i> Tərəfdaş üzrə Xülasə
-          <span class="sql-note">Oracle: SELECT p.partner_name, SUM(t.transaction_volume) FROM transaction_daily_agg_cache t JOIN partners p … GROUP BY</span></h3></div>
+        <div class="tcard-hdr"><h3><i class="fa-solid fa-table" style="color:#009688"></i> Tərəfdaş üzrə Xülasə</h3></div>
         <table id="partnerTxnTable"></table>
       </div>
-      <div class="dwh-note">
-        <strong><i class="fa-solid fa-database"></i> Arxitektura Qeydi:</strong>
-        Gündəlik aqreqatlar <code>transaction_daily_agg_cache</code>-ə hər 1–3 saatda DWH-dən yüklənir.
-        Ətraflı əməliyyatlar (<code>dwh_transactions</code>) DWH-də saxlanılır — monitoring sistemində təkrarlanmır.
+    </div>
+    <!-- ──── TXN LIST ──── -->
+    <div id="page-txnlist" class="page">
+      <div class="txn-list-filter">
+        <div class="fg"><label><i class="fa-solid fa-handshake"></i> Tərəfdaş</label>
+          <select id="tlPartner"><option value="0">Hamısı</option></select></div>
+        <div class="fg"><label><i class="fa-solid fa-calendar-days"></i> Başlanğıc</label>
+          <input type="date" id="tlFrom"></div>
+        <div class="fg"><label>&nbsp;</label><input type="date" id="tlTo"></div>
+        <div class="fg"><label><i class="fa-solid fa-tag"></i> MCC</label>
+          <select id="tlMcc"><option value="">Bütün MCC</option></select></div>
+        <div class="fg"><label><i class="fa-solid fa-earth-europe"></i> Ölkə</label>
+          <select id="tlCountry"><option value="">Bütün Ölkələr</option></select></div>
+        <div class="fg"><label><i class="fa-solid fa-credit-card"></i> Növ</label>
+          <select id="tlOpType">
+            <option value="">Hamısı</option>
+            <option value="D">Debet</option>
+            <option value="C">Kredit</option>
+          </select></div>
+        <div class="fg"><label><i class="fa-solid fa-magnifying-glass"></i> Axtarış (TX/Kart ID)</label>
+          <input type="text" id="tlSearch" placeholder="TX ID və ya Kart ID…"></div>
+        <div class="fg"><label>&nbsp;</label>
+          <button class="btn btn-primary" onclick="renderTxnList()"><i class="fa-solid fa-filter"></i> Tətbiq et</button></div>
+        <div class="fg"><label>&nbsp;</label>
+          <button class="btn btn-outline" onclick="resetTxnList()"><i class="fa-solid fa-rotate-left"></i> Sıfırla</button></div>
+      </div>
+      <div class="tcard">
+        <div class="tcard-hdr">
+          <h3><i class="fa-solid fa-list" style="color:#009688"></i> Əməliyyatlar Siyahısı</h3>
+          <span id="tlCount" style="font-size:11px;color:#94a3b8"></span>
+        </div>
+        <div style="overflow-x:auto">
+          <table id="txnListTable"></table>
+        </div>
       </div>
     </div>
+
     <!-- ──── PRODUCTS (prod_types editor) ──── -->
     <div id="page-products" class="page">
       <div class="kpi-grid kpi-grid-3" id="productsKpis" style="margin-bottom:18px"></div>
@@ -839,8 +881,20 @@ let FEE_PACKAGES = {};  // populated from Supabase fee_packages in loadData() (o
 
 let PACKAGES = [];  // populated from Supabase packages in loadData()
 
+// Classify an op_type value as credit (refund/reversal) vs debet (purchase/cash)
+function isCreditOp(op){
+  if(!op) return false;
+  const u=op.toUpperCase();
+  return u==='C'||u==='CR'||u.includes('CREDIT')||u.includes('REFUND')||u.includes('REVERSAL')||u.includes('RETURN');
+}
+
+// Tab switcher for the partner detail modal
+function showModalTab(tabId){
+  document.querySelectorAll('.modal-tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tabId));
+  document.querySelectorAll('.modal-tab-pane').forEach(p=>p.classList.toggle('active',p.id===tabId));
+}
+
 // Per-partner transaction summary (AZN — Azerbaijani manat volumes)
-// Oracle: SELECT p.partner_name, SUM(t.transaction_volume) FROM transaction_daily_agg_cache t …
 function buildSummary() {
   // Per-partner totals from live cards + transactions (last 30 days for volumes).
   // Cards are joined to partners via PROD_TYPE_MAP (from prod_types lookup).
@@ -958,10 +1012,9 @@ function buildFeeStats(){
     pidsWithFp,partnersWithout,totalEst,avgTiers};
 }
 
-// MCC and country data — let so loadData() can replace with live Supabase rows
-let MCC_DATA = [];  // populated from Supabase mcc_data in loadData()
-
-let COUNTRY_DATA = [];  // populated from Supabase country_data in loadData()
+// MCC and country label lookup maps — keyed by code for O(1) access
+let MCC_LABELS = {};   // mcc_code → name_az  (from mcc_codes table)
+let CTRY_LABELS = {};  // country_code → {name, flag}  (from country_labels table)
 
 // ═══════════════════════ DWH-SOURCED DATA (migration v6)
 let CARDS = [];           // populated from Supabase cards in loadData()
@@ -1022,14 +1075,10 @@ function feePackageFromDb(r){
     effective_from:r.effective_from||'',effective_to:r.effective_to||'',
     tiers:Array.isArray(r.tiers)?r.tiers:(typeof r.tiers==='string'?JSON.parse(r.tiers):[])};
 }
-// mcc_data → MCC_DATA format: {mcc, label, cnt, vol}
-function mccFromDb(r){
-  return{mcc:r.mcc||'',label:r.label||'',cnt:Number(r.txn_count)||0,vol:parseFloat(r.txn_volume)||0};
-}
-// country_data → COUNTRY_DATA format: {code, name, flag, cnt, vol}
-function countryFromDb(r){
-  return{code:r.code||'',name:r.name||'',flag:r.flag||'',cnt:Number(r.txn_count)||0,vol:parseFloat(r.txn_volume)||0};
-}
+// mcc_codes → MCC_LABELS map  {mcc_code → name_az}
+function buildMccLabels(rows){ const m={}; rows.forEach(r=>{ m[r.mcc_code]=r.name_az||r.name_en||r.mcc_code; }); return m; }
+// country_labels → CTRY_LABELS map  {code → {name, flag}}
+function buildCtryLabels(rows){ const m={}; rows.forEach(r=>{ m[r.code]={name:r.name||r.code,flag:r.flag||''}; }); return m; }
 // ── DWH-sourced mappers (migration v6) ──
 function cardFromDb(r){
   return {
@@ -1118,20 +1167,20 @@ async function loadData(){
       FEE_PACKAGES[pid].push(feePackageFromDb(fp));
     });
 
-    // mcc_data — optional: table may not exist yet (migration v3 not run)
+    // mcc_codes — name lookup only; populate MCC_LABELS map
     try{
-      const mccRows=await sb('GET','mcc_data',null,'?order=txn_volume.desc')||[];
-      if(mccRows.length) MCC_DATA=mccRows.map(mccFromDb);
+      const mccRows=await sb('GET','mcc_codes',null,'?select=mcc_code,name_az,name_en&order=mcc_code')||[];
+      if(mccRows.length) MCC_LABELS=buildMccLabels(mccRows);
     }catch(e){
-      console.warn('mcc_data not found, using defaults:',e.message);
+      console.warn('mcc_codes not found, run mcc_codes migration:',e.message);
     }
 
-    // country_data — optional: table may not exist yet (migration v3 not run)
+    // country_labels — name/flag lookup only; populate CTRY_LABELS map
     try{
-      const cntryRows=await sb('GET','country_data',null,'?order=txn_volume.desc')||[];
-      if(cntryRows.length) COUNTRY_DATA=cntryRows.map(countryFromDb);
+      const cntryRows=await sb('GET','country_labels',null,'?select=code,name,flag&order=code')||[];
+      if(cntryRows.length) CTRY_LABELS=buildCtryLabels(cntryRows);
     }catch(e){
-      console.warn('country_data not found, using defaults:',e.message);
+      console.warn('country_labels not found, run country_labels migration:',e.message);
     }
 
 
@@ -1326,6 +1375,7 @@ const PAGE_TITLES={
   dashboard:'Dashboard',
   partners:'Tərəfdaşlar & Paketlər / Partners & Packages',
   transactions:'Əməliyyat Analitikası / Transaction Analytics',
+  txnlist:'Əməliyyatlar Siyahısı / Transaction List',
   users:'İstifadəçilər & Rollar / Users & Roles',
   products:'Məhsul Növləri / Product Types'
 };
@@ -1341,6 +1391,7 @@ async function showPage(id){
   if (id === 'dashboard')        renderDashboard();
   else if (id === 'partners')    renderPartnersPage();
   else if (id === 'transactions'){ initTxnFilters(); applyFilters(); }
+  else if (id === 'txnlist')     { initTxnListFilters(); renderTxnList(); }
   else if (id === 'users')       { renderUsersPage(); }
   else if (id === 'products')    { renderProductsPage(); }
 }
@@ -1353,6 +1404,7 @@ async function manualRefresh(){
   if (id === 'dashboard')        renderDashboard();
   else if (id === 'partners')    renderPartnersPage();
   else if (id === 'transactions'){ initTxnFilters(); applyFilters(); }
+  else if (id === 'txnlist')     { initTxnListFilters(); renderTxnList(); }
   else if (id === 'users')       { renderUsersPage(); }
   else if (id === 'products')    { renderProductsPage(); }
   showToast('Verilənlər yeniləndi', true);
@@ -1362,9 +1414,10 @@ async function manualRefresh(){
 let trendChart,donutChart,barChart,feeRateChart;
 function destroyChart(c){if(c){try{c.destroy()}catch(e){}}}
 
-function genDailyData(partnerId=0, fromISO=null, toISO=null){
+function genDailyData(partnerId=0, fromISO=null, toISO=null, opTypeFilter=''){
   // Aggregate real transactions by day within the given date range.
   // partnerId=0 → all partners; otherwise filter via PROD_TYPE_MAP.
+  // opTypeFilter: '' = all, 'D' = debet only, 'C' = kredit only
   // When fromISO/toISO are omitted, defaults to last 30 days (dashboard use).
   const today = new Date();
   const endDate   = toISO   ? new Date(toISO)   : new Date(today);
@@ -1382,6 +1435,8 @@ function genDailyData(partnerId=0, fromISO=null, toISO=null){
       const pid = PROD_TYPE_MAP[t.prod_type];
       if(pid !== partnerId) return;
     }
+    if(opTypeFilter==='D' && isCreditOp(t.op_type)) return;
+    if(opTypeFilter==='C' && !isCreditOp(t.op_type)) return;
     buckets[t.op_date].vol += t.amt;
     buckets[t.op_date].cnt += 1;
   });
@@ -1434,10 +1489,10 @@ function initDonutChart(){
   });
 }
 
-function renderBarChart(partnerId,currency,fromISO=null,toISO=null){
+function renderBarChart(partnerId,currency,fromISO=null,toISO=null,opTypeFilter=''){
   const sym=SYMBOLS[currency]||'₼';
   const rate=RATES[currency]||1;
-  const daily=genDailyData(partnerId||0,fromISO,toISO);
+  const daily=genDailyData(partnerId||0,fromISO,toISO,opTypeFilter);
   destroyChart(barChart);
   barChart=new Chart(document.getElementById('barChart').getContext('2d'),{
     type:'bar',
@@ -1765,17 +1820,9 @@ function renderPartnersPage(){
       <td class="r">${p.status==='active'?`<strong>${fmtMoney(s.vol||0)}</strong>`:'<span style="color:#94a3b8">—</span>'}</td>
       <td>${feeCell}</td>
       <td>
-        <div style="display:flex;gap:5px;flex-wrap:wrap">
-          <button class="btn btn-outline btn-sm" onclick="openDetailModal(${p.id})">
-            <i class="fa-solid fa-magnifying-glass-chart"></i> Detal
-          </button>
-          <button class="btn btn-warning btn-sm" onclick="openPartnerForm(${p.id})">
-            <i class="fa-solid fa-pen"></i>
-          </button>
-          <button class="btn btn-primary btn-sm" onclick="openPackageForm(${p.id})">
-            <i class="fa-solid fa-plus"></i>
-          </button>
-        </div>
+        <button class="btn btn-primary btn-sm" onclick="openDetailModal(${p.id})">
+          <i class="fa-solid fa-sliders"></i> İdarəet
+        </button>
       </td></tr>`;
   });
   document.getElementById('partnersTable').innerHTML=html+'</tbody>';
@@ -2005,95 +2052,127 @@ async function openDetailModal(pid){
   const canEdit = currentRole==='administrator'||currentRole==='manager';
 
   document.getElementById('detailModalBody').innerHTML=`
-    <!-- Partner info card -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-      <div style="background:#f8fafc;border-radius:8px;padding:12px;border-left:3px solid #009688">
-        <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px">STATUS</div>
-        ${badge(p.status)}</div>
-      <div style="background:#f8fafc;border-radius:8px;padding:12px;border-left:3px solid #43a047">
-        <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px">MÜQAVİLƏ TARİXİ</div>
-        <div style="font-weight:700;color:#334155">${fmtDate(p.date)}</div></div>
-      <div style="background:#f8fafc;border-radius:8px;padding:12px;border-left:3px solid #f57c00">
-        <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:3px">VÖEN</div>
-        <div style="font-weight:600;color:#334155;font-family:monospace">${p.voen||'—'}</div></div>
-      <div style="background:#f8fafc;border-radius:8px;padding:12px;border-left:3px solid #8e24aa">
-        <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:3px">HESAB MENECERİ</div>
-        <div style="font-weight:600;color:#334155;font-size:12px">${p.mgr||'—'}</div></div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;font-size:12px">
-      <div style="background:#f8fafc;border-radius:8px;padding:12px">
-        <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px">İMZALAYAN TƏRƏF</div>
-        <div style="font-weight:600;color:#334155">${p.signatory||'—'}</div>
-        <div style="color:#94a3b8;font-size:11px">${p.signatory_pos||''}</div></div>
-      <div style="background:#f8fafc;border-radius:8px;padding:12px">
-        <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px">BANK REKVİZİTLƏRİ</div>
-        <div style="font-weight:600;color:#334155">${p.bank_name||'—'}</div>
-        <div style="color:#64748b;font-size:11px;font-family:monospace;margin-top:2px">${p.bank_account||''}</div>
-        <div style="color:#94a3b8;font-size:10px">MFO: ${p.bank_code||'—'}</div></div>
-      <div style="background:#f8fafc;border-radius:8px;padding:12px;grid-column:1/-1">
-        <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px">HÜQUQİ ÜNVAN</div>
-        <div style="color:#334155">${p.legal_address||'—'}</div></div>
-    </div>
-    <!-- KPI -->
-    <div class="mini-tiles">
-      <div class="mini-tile mt-teal"><div class="val">${fmtN(s.issued||0)}</div><div class="lbl">Buraxılmış Kartlar</div></div>
-      <div class="mini-tile mt-green"><div class="val">${fmtN(s.rem||0)}</div><div class="lbl">Qalan Kartlar</div></div>
-      <div class="mini-tile mt-orange"><div class="val">${(s.pct||0).toFixed(1)}%</div><div class="lbl">Ort. İstifadə</div></div>
-    </div>
-    <!-- Packages -->
-    <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
-      Kart Paketləri</div>
-    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:14px">
-      <thead><tr style="background:#f8fafc">
-        <th style="padding:7px 10px;text-align:left;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">ID</th>
-        <th style="padding:7px 10px;text-align:left;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Müddət</th>
-        <th style="padding:7px 10px;text-align:right;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Həcm</th>
-        <th style="padding:7px 10px;text-align:right;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Buraxılmış</th>
-        <th style="padding:7px 10px;text-align:right;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Qalan</th>
-        <th style="padding:7px 10px;min-width:120px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">İstifadə</th>
-        <th style="padding:7px 10px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Status</th>
-        <th style="padding:7px 10px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Qeyd</th>
-      </tr></thead>
-      <tbody>${pkgRows}</tbody>
-    </table>
-    <!-- Transaction summary -->
-    <div style="background:#f8fafc;border-radius:8px;padding:13px;margin-bottom:14px">
-      <div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:8px">ƏMƏLİYYAT XÜLASƏSİ (30 gün)</div>
-      <div style="display:flex;gap:22px;flex-wrap:wrap;font-size:12px">
-        <div><span style="color:#94a3b8">Həcm:</span> <strong>${fmtMoney(s.vol||0)}</strong></div>
-        <div><span style="color:#94a3b8">Əməliyyatlar:</span> <strong>${fmtN(s.cnt||0)}</strong></div>
-        <div><span style="color:#94a3b8">Ort. məbləğ:</span> <strong>${s.cnt>0?fmtMoney(s.vol/s.cnt):'—'}</strong></div>
-      </div>
-    </div>
-    ${feeSection}
-    ${exportSection}
-    <!-- Documents -->
-    <div style="font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.5px;margin:18px 0 8px">
-      <i class="fa-solid fa-folder-open" style="color:#f57c00"></i> Yüklənmiş Sənədlər
-      <span style="font-weight:400;color:#94a3b8;font-size:10px;text-transform:none;margin-left:6px">(${docs.length} fayl)</span>
-    </div>
-    <div id="docList-${pid}">${renderDocList(docs,pid)}</div>
-    <div class="upload-area" onclick="document.getElementById('docInput-${pid}').click()">
-      <i class="fa-solid fa-cloud-arrow-up" style="font-size:22px;margin-bottom:6px;display:block"></i>
-      Sənəd yükləmək üçün klikləyin<br>
-      <span style="font-size:10px;color:#94a3b8">PDF, DOC, DOCX, XLS, XLSX, ADOC · max 10MB hər biri</span>
-    </div>
-    <input type="file" id="docInput-${pid}" style="display:none"
-      accept=".pdf,.doc,.docx,.adoc,.odt,.xls,.xlsx"
-      multiple onchange="handleDocUpload(event,${pid})">
-    <!-- Actions -->
-    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end">
-      ${canEdit?`<button class="btn btn-warning" onclick="closeModal('partnerDetailModal');openPartnerForm(${pid})">
-        <i class="fa-solid fa-pen"></i> Düzəliş et</button>`:''}
-      <button class="btn btn-primary" onclick="closeModal('partnerDetailModal');openPackageForm(${pid})">
-        <i class="fa-solid fa-plus"></i> Kart Paketi
+    <!-- ── TABS ── -->
+    <div class="modal-tabs">
+      <button class="modal-tab-btn active" data-tab="tab-info-${pid}" onclick="showModalTab('tab-info-${pid}')">
+        <i class="fa-solid fa-circle-info"></i> Məlumat
       </button>
-      <button class="btn btn-outline" style="border-color:#1565c0;color:#1565c0" onclick="openFeePackageForm(null,${pid})">
-        <i class="fa-solid fa-percent"></i> Komisyon Paketi
+      <button class="modal-tab-btn" data-tab="tab-pkgs-${pid}" onclick="showModalTab('tab-pkgs-${pid}')">
+        <i class="fa-solid fa-box-open"></i> Paketlər
       </button>
-      <button class="btn btn-outline" onclick="goTxn(${pid})">
+      <button class="modal-tab-btn" data-tab="tab-docs-${pid}" onclick="showModalTab('tab-docs-${pid}')">
+        <i class="fa-solid fa-folder-open"></i> Sənədlər
+        ${docs.length?`<span style="background:#f57c00;color:#fff;border-radius:10px;font-size:9px;padding:1px 5px;margin-left:2px">${docs.length}</span>`:''}
+      </button>
+      <button class="modal-tab-btn" data-tab="tab-txn-${pid}" onclick="showModalTab('tab-txn-${pid}')">
         <i class="fa-solid fa-chart-line"></i> Əməliyyatlar
       </button>
+    </div>
+
+    <!-- ── TAB: Məlumat ── -->
+    <div id="tab-info-${pid}" class="modal-tab-pane active">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+        <div style="background:#f8fafc;border-radius:8px;padding:12px;border-left:3px solid #009688">
+          <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px">STATUS</div>
+          ${badge(p.status)}</div>
+        <div style="background:#f8fafc;border-radius:8px;padding:12px;border-left:3px solid #43a047">
+          <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px">MÜQAVİLƏ TARİXİ</div>
+          <div style="font-weight:700;color:#334155">${fmtDate(p.date)}</div></div>
+        <div style="background:#f8fafc;border-radius:8px;padding:12px;border-left:3px solid #f57c00">
+          <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:3px">VÖEN</div>
+          <div style="font-weight:600;color:#334155;font-family:monospace">${p.voen||'—'}</div></div>
+        <div style="background:#f8fafc;border-radius:8px;padding:12px;border-left:3px solid #8e24aa">
+          <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:3px">HESAB MENECERİ</div>
+          <div style="font-weight:600;color:#334155;font-size:12px">${p.mgr||'—'}</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;font-size:12px">
+        <div style="background:#f8fafc;border-radius:8px;padding:12px">
+          <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px">İMZALAYAN TƏRƏF</div>
+          <div style="font-weight:600;color:#334155">${p.signatory||'—'}</div>
+          <div style="color:#94a3b8;font-size:11px">${p.signatory_pos||''}</div></div>
+        <div style="background:#f8fafc;border-radius:8px;padding:12px">
+          <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px">BANK REKVİZİTLƏRİ</div>
+          <div style="font-weight:600;color:#334155">${p.bank_name||'—'}</div>
+          <div style="color:#64748b;font-size:11px;font-family:monospace;margin-top:2px">${p.bank_account||''}</div>
+          <div style="color:#94a3b8;font-size:10px">MFO: ${p.bank_code||'—'}</div></div>
+        <div style="background:#f8fafc;border-radius:8px;padding:12px;grid-column:1/-1">
+          <div style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px">HÜQUQİ ÜNVAN</div>
+          <div style="color:#334155">${p.legal_address||'—'}</div></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:4px">
+        ${canEdit?`<button class="btn btn-warning" onclick="closeModal('partnerDetailModal');openPartnerForm(${pid})">
+          <i class="fa-solid fa-pen"></i> Məlumatı Düzəlt</button>`:''}
+      </div>
+    </div>
+
+    <!-- ── TAB: Paketlər ── -->
+    <div id="tab-pkgs-${pid}" class="modal-tab-pane">
+      <div class="mini-tiles">
+        <div class="mini-tile mt-teal"><div class="val">${fmtN(s.issued||0)}</div><div class="lbl">Buraxılmış Kartlar</div></div>
+        <div class="mini-tile mt-green"><div class="val">${fmtN(s.rem||0)}</div><div class="lbl">Qalan Kartlar</div></div>
+        <div class="mini-tile mt-orange"><div class="val">${(s.pct||0).toFixed(1)}%</div><div class="lbl">Ort. İstifadə</div></div>
+      </div>
+      <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Kart Paketləri</div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:14px">
+        <thead><tr style="background:#f8fafc">
+          <th style="padding:7px 10px;text-align:left;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">ID</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Müddət</th>
+          <th style="padding:7px 10px;text-align:right;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Həcm</th>
+          <th style="padding:7px 10px;text-align:right;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Buraxılmış</th>
+          <th style="padding:7px 10px;text-align:right;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Qalan</th>
+          <th style="padding:7px 10px;min-width:120px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">İstifadə</th>
+          <th style="padding:7px 10px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Status</th>
+          <th style="padding:7px 10px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Qeyd</th>
+        </tr></thead>
+        <tbody>${pkgRows}</tbody>
+      </table>
+      ${feeSection}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn btn-primary btn-sm" onclick="closeModal('partnerDetailModal');openPackageForm(${pid})">
+          <i class="fa-solid fa-plus"></i> Kart Paketi Əlavə et
+        </button>
+        <button class="btn btn-outline btn-sm" style="border-color:#1565c0;color:#1565c0" onclick="openFeePackageForm(null,${pid})">
+          <i class="fa-solid fa-percent"></i> Komisyon Paketi Əlavə et
+        </button>
+      </div>
+    </div>
+
+    <!-- ── TAB: Sənədlər ── -->
+    <div id="tab-docs-${pid}" class="modal-tab-pane">
+      ${exportSection}
+      <div style="font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.5px;margin:18px 0 8px">
+        <i class="fa-solid fa-folder-open" style="color:#f57c00"></i> Yüklənmiş Sənədlər
+        <span style="font-weight:400;color:#94a3b8;font-size:10px;text-transform:none;margin-left:6px">(${docs.length} fayl)</span>
+      </div>
+      <div id="docList-${pid}">${renderDocList(docs,pid)}</div>
+      <div class="upload-area" onclick="document.getElementById('docInput-${pid}').click()">
+        <i class="fa-solid fa-cloud-arrow-up" style="font-size:22px;margin-bottom:6px;display:block"></i>
+        Sənəd yükləmək üçün klikləyin<br>
+        <span style="font-size:10px;color:#94a3b8">PDF, DOC, DOCX, XLS, XLSX, ADOC · max 10MB hər biri</span>
+      </div>
+      <input type="file" id="docInput-${pid}" style="display:none"
+        accept=".pdf,.doc,.docx,.adoc,.odt,.xls,.xlsx"
+        multiple onchange="handleDocUpload(event,${pid})">
+    </div>
+
+    <!-- ── TAB: Əməliyyatlar ── -->
+    <div id="tab-txn-${pid}" class="modal-tab-pane">
+      <div style="background:#f8fafc;border-radius:8px;padding:14px;margin-bottom:14px">
+        <div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:8px">ƏMƏLİYYAT XÜLASƏSİ (30 gün)</div>
+        <div style="display:flex;gap:22px;flex-wrap:wrap;font-size:12px">
+          <div><span style="color:#94a3b8">Həcm:</span> <strong>${fmtMoney(s.vol||0)}</strong></div>
+          <div><span style="color:#94a3b8">Əməliyyatlar:</span> <strong>${fmtN(s.cnt||0)}</strong></div>
+          <div><span style="color:#94a3b8">Ort. məbləğ:</span> <strong>${s.cnt>0?fmtMoney(s.vol/s.cnt):'—'}</strong></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="goTxn(${pid})">
+          <i class="fa-solid fa-chart-line"></i> Analitikaya keç
+        </button>
+        <button class="btn btn-outline" onclick="closeModal('partnerDetailModal');showPage('txnlist');document.getElementById('tlPartner').value=${pid};renderTxnList()">
+          <i class="fa-solid fa-list"></i> Siyahıya keç
+        </button>
+      </div>
     </div>`;
   openModal('partnerDetailModal');
   // Auto-calculate if 30d volume is available
@@ -2120,15 +2199,26 @@ function initTxnFilters(){
     const o=document.createElement('option');
     o.value=p.id;o.textContent=p.name;ps.appendChild(o);
   });
+  // MCC dropdown — unique codes present in TRANSACTIONS, labelled from MCC_LABELS
   const ms=document.getElementById('fMcc');
   ms.innerHTML='<option value="">Bütün MCC</option>';
-  MCC_DATA.forEach(m=>{
-    const o=document.createElement('option');o.value=m.mcc;o.textContent=`${m.mcc} – ${m.label}`;ms.appendChild(o);
+  const uniqueMccs=[...new Set(TRANSACTIONS.map(t=>t.mcc).filter(Boolean))].sort();
+  uniqueMccs.forEach(code=>{
+    const o=document.createElement('option');
+    o.value=code;
+    o.textContent=MCC_LABELS[code]?`${code} – ${MCC_LABELS[code]}`:code;
+    ms.appendChild(o);
   });
+  // Country dropdown — unique codes present in TRANSACTIONS, labelled from CTRY_LABELS
   const cs=document.getElementById('fCountry');
   cs.innerHTML='<option value="">Bütün Ölkələr</option>';
-  COUNTRY_DATA.forEach(c=>{
-    const o=document.createElement('option');o.value=c.code;o.textContent=`${c.flag} ${c.name}`;cs.appendChild(o);
+  const uniqueCtry=[...new Set(TRANSACTIONS.map(t=>t.country).filter(Boolean))].sort();
+  uniqueCtry.forEach(code=>{
+    const info=CTRY_LABELS[code]||{name:code,flag:''};
+    const o=document.createElement('option');
+    o.value=code;
+    o.textContent=`${info.flag} ${info.name}`.trim()||code;
+    cs.appendChild(o);
   });
   const to=new Date();const from=new Date();from.setDate(from.getDate()-29);
   document.getElementById('fTo').value=to.toISOString().slice(0,10);
@@ -2142,14 +2232,15 @@ function applyFilters(){
   const ctryFilter=document.getElementById('fCountry').value;
   const fromISO=document.getElementById('fFrom').value||null;
   const toISO=document.getElementById('fTo').value||null;
+  const opTypeFilter=document.getElementById('fOpType').value;
   const sym='₼';const rate=1;
 
   const pObj=pid?PARTNERS.find(p=>p.id===pid):null;
   document.getElementById('barChartTitle').textContent=
     `Gündəlik Əməliyyat Həcmi — ${pObj?pObj.name:'Bütün Tərəfdaşlar'}`;
-  renderBarChart(pid,cur,fromISO,toISO);
+  renderBarChart(pid,cur,fromISO,toISO,opTypeFilter);
 
-  const daily=genDailyData(pid||0,fromISO,toISO);
+  const daily=genDailyData(pid||0,fromISO,toISO,opTypeFilter);
   const totalVol=daily.reduce((s,d)=>s+d.vol,0)*rate;
   const totalCnt=daily.reduce((s,d)=>s+d.cnt,0);
   const avgTkt=totalCnt>0?totalVol/totalCnt:0;
@@ -2169,6 +2260,8 @@ function applyFilters(){
     if(fromISO && t.op_date < fromISO) return false;
     if(toISO   && t.op_date > toISO)   return false;
     if(pid > 0 && PROD_TYPE_MAP[t.prod_type] !== pid) return false;
+    if(opTypeFilter==='D' && isCreditOp(t.op_type)) return false;
+    if(opTypeFilter==='C' && !isCreditOp(t.op_type)) return false;
     return true;
   });
 
@@ -2177,8 +2270,8 @@ function applyFilters(){
   filteredTxns.forEach(t => {
     if(!t.mcc) return;
     if(!mccAgg[t.mcc]){
-      const info = MCC_DATA.find(m=>m.mcc===t.mcc)||{label:t.mcc};
-      mccAgg[t.mcc]={mcc:t.mcc,label:info.label,cnt:0,vol:0};
+      const label = MCC_LABELS[t.mcc] || t.mcc;
+      mccAgg[t.mcc]={mcc:t.mcc,label,cnt:0,vol:0};
     }
     mccAgg[t.mcc].cnt++;
     mccAgg[t.mcc].vol+=t.amt;
@@ -2203,7 +2296,7 @@ function applyFilters(){
   filteredTxns.forEach(t => {
     const code=t.country||'XXX';
     if(!ctryAgg[code]){
-      const info=COUNTRY_DATA.find(c=>c.code===code)||{name:'Unknown',flag:''};
+      const info=CTRY_LABELS[code]||{name:'Unknown',flag:''};
       ctryAgg[code]={code,name:info.name,flag:info.flag,cnt:0,vol:0};
     }
     ctryAgg[code].cnt++;
@@ -2239,8 +2332,6 @@ function applyFilters(){
     const s=sum[p.id]||{};const v=(s.vol||0)*rate;
     const cnt=s.cnt||0;const avg=cnt>0?v/cnt:0;
     const share=((s.vol||0)/partTotal*100).toFixed(1);
-    const trendPct=(3.5+(p.id*1.7)%8).toFixed(1);
-    const trendCol=p.id%2===0?'#43a047':'#e53935';
     ptHtml+=`<tr>
       <td><strong>${p.name}</strong> ${badge(p.status)}</td>
       <td class="r">${fmtN(cnt)}</td>
@@ -2251,16 +2342,127 @@ function applyFilters(){
           <div style="width:${Math.min(100,share)}%;height:100%;background:linear-gradient(90deg,#009688,#4dd0c4);border-radius:3px"></div>
         </div><small style="font-size:10px;color:#64748b">${share}%</small>`:
         '<span style="color:#94a3b8;font-size:11px">—</span>'}</td>
-      <td>${p.status==='active'?`<span style="color:${trendCol};font-weight:700;font-size:12px">+${trendPct}% həftəlik</span>`:
-        '<span style="color:#94a3b8;font-size:11px">Qeyri-aktiv</span>'}</td>
+      <td><span style="color:#94a3b8;font-size:11px">—</span></td>
     </tr>`;
   });
   document.getElementById('partnerTxnTable').innerHTML=ptHtml+'</tbody>';
 }
 
+// ═══════════════════════ TRANSACTION LIST PAGE
+function initTxnListFilters(){
+  // Partner dropdown
+  const ps=document.getElementById('tlPartner');
+  ps.innerHTML='<option value="0">Hamısı</option>';
+  PARTNERS.forEach(p=>{
+    const o=document.createElement('option');o.value=p.id;o.textContent=p.name;ps.appendChild(o);
+  });
+  // MCC dropdown
+  const ms=document.getElementById('tlMcc');
+  ms.innerHTML='<option value="">Bütün MCC</option>';
+  const uniqueMccs=[...new Set(TRANSACTIONS.map(t=>t.mcc).filter(Boolean))].sort();
+  uniqueMccs.forEach(code=>{
+    const o=document.createElement('option');
+    o.value=code;
+    o.textContent=MCC_LABELS[code]?`${code} – ${MCC_LABELS[code]}`:code;
+    ms.appendChild(o);
+  });
+  // Country dropdown
+  const cs=document.getElementById('tlCountry');
+  cs.innerHTML='<option value="">Bütün Ölkələr</option>';
+  const uniqueCtry=[...new Set(TRANSACTIONS.map(t=>t.country).filter(Boolean))].sort();
+  uniqueCtry.forEach(code=>{
+    const info=CTRY_LABELS[code]||{name:code,flag:''};
+    const o=document.createElement('option');o.value=code;
+    o.textContent=`${info.flag} ${info.name}`.trim()||code;
+    cs.appendChild(o);
+  });
+  // Date defaults — last 30 days
+  const to=new Date();const from=new Date();from.setDate(from.getDate()-29);
+  document.getElementById('tlTo').value=to.toISOString().slice(0,10);
+  document.getElementById('tlFrom').value=from.toISOString().slice(0,10);
+}
+
+const TXN_PAGE_SIZE = 500;
+let _tlPage = 0;
+
+function renderTxnList(){
+  _tlPage = 0;
+  const pid    = parseInt(document.getElementById('tlPartner').value)||0;
+  const fromISO= document.getElementById('tlFrom').value||null;
+  const toISO  = document.getElementById('tlTo').value||null;
+  const mccF   = document.getElementById('tlMcc').value;
+  const ctryF  = document.getElementById('tlCountry').value;
+  const opType = document.getElementById('tlOpType').value;
+  const search = document.getElementById('tlSearch').value.trim().toLowerCase();
+  const sym='₼';
+
+  let rows = TRANSACTIONS.filter(t=>{
+    if(!t.op_date) return false;
+    if(fromISO && t.op_date < fromISO) return false;
+    if(toISO   && t.op_date > toISO)   return false;
+    if(pid > 0 && PROD_TYPE_MAP[t.prod_type] !== pid) return false;
+    if(mccF  && t.mcc !== mccF)     return false;
+    if(ctryF && t.country !== ctryF) return false;
+    if(opType==='D' && isCreditOp(t.op_type)) return false;
+    if(opType==='C' && !isCreditOp(t.op_type)) return false;
+    if(search && !t.tx_id?.toLowerCase().includes(search) && !t.card_id?.toLowerCase().includes(search)) return false;
+    return true;
+  }).sort((a,b)=>b.op_date.localeCompare(a.op_date)||b.tx_id.localeCompare(a.tx_id));
+
+  const total = rows.length;
+  const shown = Math.min(total, TXN_PAGE_SIZE);
+  rows = rows.slice(0, shown);
+
+  document.getElementById('tlCount').textContent = total>shown ? `${shown.toLocaleString()} / ${total.toLocaleString()} əməliyyat göstərilir` : `${total.toLocaleString()} əməliyyat`;
+
+  let html=`<thead><tr>
+    <th>TX ID</th><th>Kart ID</th><th>Tərəfdaş</th>
+    <th>Tarix</th><th class="r">Məbləğ</th>
+    <th>MCC</th><th>Ölkə</th><th>Op Növü</th><th>Məhsul</th>
+  </tr></thead><tbody>`;
+
+  rows.forEach(t=>{
+    const partnerName = (()=>{ const ppid=PROD_TYPE_MAP[t.prod_type]; return ppid?PARTNERS.find(p=>p.id===ppid)?.name||'—':'—'; })();
+    const mccLabel = t.mcc?(MCC_LABELS[t.mcc]?`<span class="mono" style="font-size:10px;color:#64748b">${t.mcc}</span> ${MCC_LABELS[t.mcc]}`:t.mcc):'—';
+    const ctryInfo = t.country?(CTRY_LABELS[t.country]||{name:t.country,flag:''}):null;
+    const ctryLabel = ctryInfo?`${ctryInfo.flag} ${ctryInfo.name}`.trim():'—';
+    const isCredit = isCreditOp(t.op_type);
+    const opBadge = isCredit
+      ? `<span class="badge" style="background:#fce4ec;color:#c62828">Kredit</span>`
+      : `<span class="badge" style="background:#e0f2f1;color:#00695c">Debet</span>`;
+    html+=`<tr>
+      <td class="mono" style="font-size:11px">${t.tx_id||'—'}</td>
+      <td class="mono" style="font-size:11px">${t.card_id||'—'}</td>
+      <td style="font-size:12px">${partnerName}</td>
+      <td style="font-size:12px">${t.op_date||'—'}</td>
+      <td class="r"><strong>${sym} ${fmtN(t.amt,2)}</strong></td>
+      <td style="font-size:12px">${mccLabel}</td>
+      <td style="font-size:12px">${ctryLabel}</td>
+      <td>${opBadge}${t.op_type?`<span style="font-size:10px;color:#94a3b8;margin-left:4px">${t.op_type}</span>`:''}</td>
+      <td class="mono" style="font-size:11px;color:#64748b">${t.prod_type||'—'}</td>
+    </tr>`;
+  });
+  if(!rows.length) html+=`<tr><td colspan="9" style="color:#94a3b8;text-align:center;padding:18px">Məlumat yoxdur</td></tr>`;
+  document.getElementById('txnListTable').innerHTML=html+'</tbody>';
+}
+
+function resetTxnList(){
+  document.getElementById('tlPartner').value='0';
+  document.getElementById('tlMcc').value='';
+  document.getElementById('tlCountry').value='';
+  document.getElementById('tlOpType').value='';
+  document.getElementById('tlSearch').value='';
+  const to=new Date();const from=new Date();from.setDate(from.getDate()-29);
+  document.getElementById('tlTo').value=to.toISOString().slice(0,10);
+  document.getElementById('tlFrom').value=from.toISOString().slice(0,10);
+  renderTxnList();
+}
+
 function resetFilters(){
   document.getElementById('fPartner').value='0';
-  document.getElementById('fMcc').value='';document.getElementById('fCountry').value='';
+  document.getElementById('fMcc').value='';
+  document.getElementById('fCountry').value='';
+  document.getElementById('fOpType').value='D';
   const to=new Date();const from=new Date();from.setDate(from.getDate()-29);
   document.getElementById('fTo').value=to.toISOString().slice(0,10);
   document.getElementById('fFrom').value=from.toISOString().slice(0,10);
