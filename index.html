@@ -228,6 +228,14 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
 .modal-tab-btn.active{color:#009688;border-bottom-color:#009688}
 .modal-tab-pane{display:none}.modal-tab-pane.active{display:block}
 
+/* SORTABLE TABLE HEADERS */
+.sort-th{cursor:pointer;user-select:none;white-space:nowrap}
+.sort-th:hover{background:#f1f5f9;color:#334155}
+.sort-th .sort-icon{margin-left:4px;font-size:9px;color:#94a3b8}
+.sort-th.asc .sort-icon::after{content:'▲';color:#009688}
+.sort-th.desc .sort-icon::after{content:'▼';color:#009688}
+.sort-th:not(.asc):not(.desc) .sort-icon::after{content:'⇅'}
+
 /* TXN LIST PAGE */
 .txn-list-filter{background:#fff;border-radius:12px;padding:14px 18px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:18px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
 .txn-list-filter .fg input[type=text]{border:1.5px solid #e2e8f0;border-radius:7px;padding:7px 10px;font-size:12px;color:#334155;background:#fff;outline:none;font-family:inherit;min-width:160px}
@@ -487,7 +495,7 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
             <option value="C">Kredit</option>
           </select></div>
         <div class="fg"><label><i class="fa-solid fa-magnifying-glass"></i> Axtarış (TX/Kart ID)</label>
-          <input type="text" id="tlSearch" placeholder="TX ID və ya Kart ID…"></div>
+          <input type="text" id="tlSearch" placeholder="TX ID, Kart ID və ya Merchant…"></div>
         <div class="fg"><label>&nbsp;</label>
           <button class="btn btn-primary" onclick="renderTxnList()"><i class="fa-solid fa-filter"></i> Tətbiq et</button></div>
         <div class="fg"><label>&nbsp;</label>
@@ -1103,7 +1111,8 @@ function txnFromDb(r){
     amt:Number(r.amt_ccy_card||0),
     op_date:r.op_date,
     mcc:r.mcc_code, country:r.merch_cntry,
-    op_type:r.op_type
+    op_type:r.op_type,
+    merch_descr:r.merch_descr||null
   };
 }
 function prodTypeFromDb(r){
@@ -2384,6 +2393,14 @@ function initTxnListFilters(){
 
 const TXN_PAGE_SIZE = 500;
 let _tlPage = 0;
+let _tlSortCol = 'op_date';
+let _tlSortDir = 'desc';
+
+function tlSort(col){
+  if(_tlSortCol===col){ _tlSortDir=_tlSortDir==='asc'?'desc':'asc'; }
+  else { _tlSortCol=col; _tlSortDir=col==='amt'?'desc':'asc'; }
+  renderTxnList();
+}
 
 function renderTxnList(){
   _tlPage = 0;
@@ -2405,41 +2422,77 @@ function renderTxnList(){
     if(ctryF && t.country !== ctryF) return false;
     if(opType==='D' && isCreditOp(t.op_type)) return false;
     if(opType==='C' && !isCreditOp(t.op_type)) return false;
-    if(search && !t.tx_id?.toLowerCase().includes(search) && !t.card_id?.toLowerCase().includes(search)) return false;
+    if(search && !t.tx_id?.toLowerCase().includes(search) &&
+       !t.card_id?.toLowerCase().includes(search) &&
+       !t.merch_descr?.toLowerCase().includes(search)) return false;
     return true;
-  }).sort((a,b)=>b.op_date.localeCompare(a.op_date)||b.tx_id.localeCompare(a.tx_id));
+  });
+
+  // Sort
+  rows.sort((a,b)=>{
+    let va, vb;
+    switch(_tlSortCol){
+      case 'tx_id':    va=a.tx_id||'';    vb=b.tx_id||'';    break;
+      case 'card_id':  va=a.card_id||'';  vb=b.card_id||'';  break;
+      case 'partner':  va=PARTNERS.find(p=>p.id===PROD_TYPE_MAP[a.prod_type])?.name||''; vb=PARTNERS.find(p=>p.id===PROD_TYPE_MAP[b.prod_type])?.name||''; break;
+      case 'op_date':  va=a.op_date||'';  vb=b.op_date||'';  break;
+      case 'amt':      va=a.amt;          vb=b.amt;           break;
+      case 'mcc':      va=a.mcc||'';      vb=b.mcc||'';       break;
+      case 'country':  va=a.country||'';  vb=b.country||'';   break;
+      case 'op_type':  va=a.op_type||'';  vb=b.op_type||'';   break;
+      case 'merch':    va=a.merch_descr||''; vb=b.merch_descr||''; break;
+      default:         va=a.op_date||'';  vb=b.op_date||'';
+    }
+    const cmp = typeof va==='number' ? va-vb : va.localeCompare(vb);
+    return _tlSortDir==='asc' ? cmp : -cmp;
+  });
 
   const total = rows.length;
   const shown = Math.min(total, TXN_PAGE_SIZE);
   rows = rows.slice(0, shown);
 
-  document.getElementById('tlCount').textContent = total>shown ? `${shown.toLocaleString()} / ${total.toLocaleString()} əməliyyat göstərilir` : `${total.toLocaleString()} əməliyyat`;
+  document.getElementById('tlCount').textContent = total>shown
+    ? `${shown.toLocaleString()} / ${total.toLocaleString()} əməliyyat göstərilir`
+    : `${total.toLocaleString()} əməliyyat`;
 
-  let html=`<thead><tr>
-    <th>TX ID</th><th>Kart ID</th><th>Tərəfdaş</th>
-    <th>Tarix</th><th class="r">Məbləğ</th>
-    <th>MCC</th><th>Ölkə</th><th>Op Növü</th><th>Məhsul</th>
-  </tr></thead><tbody>`;
+  const cols = [
+    {key:'tx_id',   label:'TX ID'},
+    {key:'card_id', label:'Kart ID'},
+    {key:'partner', label:'Tərəfdaş'},
+    {key:'op_date', label:'Tarix'},
+    {key:'amt',     label:'Məbləğ', cls:'r'},
+    {key:'merch',   label:'Merchant'},
+    {key:'mcc',     label:'MCC'},
+    {key:'country', label:'Ölkə'},
+    {key:'op_type', label:'Op Növü'},
+  ];
+
+  let html=`<thead><tr>`;
+  cols.forEach(c=>{
+    const sortCls = _tlSortCol===c.key ? _tlSortDir : '';
+    html+=`<th class="sort-th ${sortCls} ${c.cls||''}" onclick="tlSort('${c.key}')">${c.label}<span class="sort-icon"></span></th>`;
+  });
+  html+=`</tr></thead><tbody>`;
 
   rows.forEach(t=>{
-    const partnerName = (()=>{ const ppid=PROD_TYPE_MAP[t.prod_type]; return ppid?PARTNERS.find(p=>p.id===ppid)?.name||'—':'—'; })();
-    const mccLabel = t.mcc?(MCC_LABELS[t.mcc]?`<span class="mono" style="font-size:10px;color:#64748b">${t.mcc}</span> ${MCC_LABELS[t.mcc]}`:t.mcc):'—';
-    const ctryInfo = t.country?(CTRY_LABELS[t.country]||{name:t.country,flag:''}):null;
-    const ctryLabel = ctryInfo?`${ctryInfo.flag} ${ctryInfo.name}`.trim():'—';
-    const isCredit = isCreditOp(t.op_type);
-    const opBadge = isCredit
-      ? `<span class="badge" style="background:#fce4ec;color:#c62828">Kredit</span>`
-      : `<span class="badge" style="background:#e0f2f1;color:#00695c">Debet</span>`;
+    const partnerName=(()=>{ const ppid=PROD_TYPE_MAP[t.prod_type]; return ppid?PARTNERS.find(p=>p.id===ppid)?.name||'—':'—'; })();
+    const mccLabel=t.mcc?(MCC_LABELS[t.mcc]?`<span class="mono" style="font-size:10px;color:#64748b">${t.mcc}</span> ${MCC_LABELS[t.mcc]}`:t.mcc):'—';
+    const ctryInfo=t.country?(CTRY_LABELS[t.country]||{name:t.country,flag:''}):null;
+    const ctryLabel=ctryInfo?`${ctryInfo.flag} ${ctryInfo.name}`.trim():'—';
+    const isCredit=isCreditOp(t.op_type);
+    const opBadge=isCredit
+      ?`<span class="badge" style="background:#fce4ec;color:#c62828">Kredit</span>`
+      :`<span class="badge" style="background:#e0f2f1;color:#00695c">Debet</span>`;
     html+=`<tr>
       <td class="mono" style="font-size:11px">${t.tx_id||'—'}</td>
       <td class="mono" style="font-size:11px">${t.card_id||'—'}</td>
       <td style="font-size:12px">${partnerName}</td>
       <td style="font-size:12px">${t.op_date||'—'}</td>
       <td class="r"><strong>${sym} ${fmtN(t.amt,2)}</strong></td>
+      <td style="font-size:12px">${t.merch_descr||'—'}</td>
       <td style="font-size:12px">${mccLabel}</td>
       <td style="font-size:12px">${ctryLabel}</td>
       <td>${opBadge}${t.op_type?`<span style="font-size:10px;color:#94a3b8;margin-left:4px">${t.op_type}</span>`:''}</td>
-      <td class="mono" style="font-size:11px;color:#64748b">${t.prod_type||'—'}</td>
     </tr>`;
   });
   if(!rows.length) html+=`<tr><td colspan="9" style="color:#94a3b8;text-align:center;padding:18px">Məlumat yoxdur</td></tr>`;
