@@ -2229,7 +2229,8 @@ function initTxnFilters(){
     o.textContent=`${info.flag} ${info.name}`.trim()||code;
     cs.appendChild(o);
   });
-  const to=new Date();const from=new Date();from.setDate(from.getDate()-1);
+  const to=new Date();to.setDate(to.getDate()-1);
+  const from=new Date();from.setDate(from.getDate()-31);
   document.getElementById('fTo').value=to.toISOString().slice(0,10);
   document.getElementById('fFrom').value=from.toISOString().slice(0,10);
 }
@@ -2516,7 +2517,8 @@ function resetFilters(){
   document.getElementById('fMcc').value='';
   document.getElementById('fCountry').value='';
   document.getElementById('fOpType').value='D';
-  const to=new Date();const from=new Date();from.setDate(from.getDate()-1);
+  const to=new Date();to.setDate(to.getDate()-1);
+  const from=new Date();from.setDate(from.getDate()-31);
   document.getElementById('fTo').value=to.toISOString().slice(0,10);
   document.getElementById('fFrom').value=from.toISOString().slice(0,10);
   applyFilters();
