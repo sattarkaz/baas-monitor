@@ -1272,9 +1272,17 @@ async function uploadFileToStorage(pid, file){
   if(!res.ok){const t=await res.text();throw new Error(t);}
   return path;
 }
-function getStorageUrl(storage_path){
+async function getStorageUrl(storage_path){
   if(!storage_path||!sbOn()) return null;
-  return`${SUPABASE_URL}/storage/v1/object/public/partner-docs/${storage_path}`;
+  // partner-docs is a private bucket — request a signed URL (valid 60 min)
+  const r=await fetch(`${SUPABASE_URL}/storage/v1/object/sign/partner-docs/${storage_path}`,{
+    method:'POST',
+    headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json'},
+    body:JSON.stringify({expiresIn:3600})
+  });
+  if(!r.ok) return null;
+  const j=await r.json();
+  return j.signedURL ? `${SUPABASE_URL}/storage/v1${j.signedURL}` : null;
 }
 
 // ── Reset to seed data (deletes and re-inserts via SQL — user does this in Supabase dashboard) ──
@@ -2153,7 +2161,7 @@ async function openDetailModal(pid){
         <i class="fa-solid fa-folder-open" style="color:#f57c00"></i> Yüklənmiş Sənədlər
         <span style="font-weight:400;color:#94a3b8;font-size:10px;text-transform:none;margin-left:6px">(${docs.length} fayl)</span>
       </div>
-      <div id="docList-${pid}">${renderDocList(docs,pid)}</div>
+      <div id="docList-${pid}"><span style="color:#94a3b8;font-size:12px">Yüklənir…</span></div>
       <div class="upload-area" onclick="document.getElementById('docInput-${pid}').click()">
         <i class="fa-solid fa-cloud-arrow-up" style="font-size:22px;margin-bottom:6px;display:block"></i>
         Sənəd yükləmək üçün klikləyin<br>
@@ -2184,6 +2192,8 @@ async function openDetailModal(pid){
       </div>
     </div>`;
   openModal('partnerDetailModal');
+  // Populate doc list asynchronously (needs signed URLs from Supabase Storage)
+  refreshDocList(pid);
   // Auto-calculate if 30d volume is available
   if(s.vol>0) setTimeout(()=>calcFeeResult(pid),50);
 }
@@ -2663,10 +2673,11 @@ async function toggleUserStatus(uid){
 }
 
 // ═══════════════════════ DOCUMENT HELPERS
-function renderDocList(docs, pid){
+async function renderDocList(docs, pid){
   if(!docs||!docs.length) return`<div style="color:#94a3b8;font-size:12px;padding:8px 0">Hələ sənəd əlavə edilməyib.</div>`;
-  return docs.map(d=>{
-    const dlUrl=getStorageUrl(d.storage_path);
+  const urls=await Promise.all(docs.map(d=>getStorageUrl(d.storage_path)));
+  return docs.map((d,i)=>{
+    const dlUrl=urls[i];
     return`<div class="doc-item">
       <div class="doc-icon">${fileIcon(d.mime)}</div>
       <div class="doc-info">
@@ -2682,10 +2693,10 @@ function renderDocList(docs, pid){
     </div>`;
   }).join('');
 }
-function refreshDocList(pid){
+async function refreshDocList(pid){
   const docs=PARTNER_DOCS[pid]||[];
   const el=document.getElementById(`docList-${pid}`);
-  if(el) el.innerHTML=renderDocList(docs,pid);
+  if(el) el.innerHTML=await renderDocList(docs,pid);
 }
 
 function fileIcon(mime){
