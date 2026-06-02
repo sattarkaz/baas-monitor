@@ -2628,6 +2628,7 @@ async function saveUser(){
   const dup=SYS_USERS.find(u=>u.login===login&&u.id!==Number(uid));
   if(dup){showToast('Bu login artıq istifadə edilir!',false);return;}
   const fields={login,name,email,role,status};
+  if(pass) fields.password=pass;
   try{
     if(uid){
       if(sbOn()) await sb('PATCH','sys_users',fields,`?id=eq.${uid}`);
