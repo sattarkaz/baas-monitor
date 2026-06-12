@@ -142,6 +142,17 @@ td.r{text-align:right}td.mono{font-family:monospace;font-size:11px}
 .btn-outline{background:#fff;color:#334155;border:1.5px solid #e2e8f0}.btn-outline:hover{background:#f8fafc}
 .btn-sm{padding:4px 10px;font-size:11px}
 
+/* DASHBOARD PERIOD BAR */
+.dash-period-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.dash-period-lbl{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.dash-period-btns{display:flex;gap:4px;flex-wrap:wrap}
+.dash-period-btn{padding:5px 15px;border:1.5px solid #e2e8f0;background:#fff;border-radius:20px;font-size:12px;font-weight:500;color:#64748b;cursor:pointer;transition:all .15s;font-family:inherit}
+.dash-period-btn:hover{border-color:#009688;color:#009688;background:#e0f2f1}
+.dash-period-btn.active{background:#009688;border-color:#009688;color:#fff;font-weight:700}
+.dash-custom-dates{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.dash-custom-dates input[type=date]{padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px;color:#1e293b;font-family:inherit;outline:none}
+.dash-custom-dates input[type=date]:focus{border-color:#009688}
+
 /* NOTICE */
 .notice{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border-radius:8px;margin-bottom:16px;font-size:12px}
 .notice.info{background:#e0f2f1;color:#004d40}
@@ -190,6 +201,30 @@ td.r{text-align:right}td.mono{font-family:monospace;font-size:11px}
 .tiers-tbl td{padding:6px 8px;border-bottom:1px solid #f1f5f9}.tiers-tbl tr:last-child td{border-bottom:none}
 .tier-inp{border:1.5px solid #e2e8f0;border-radius:6px;padding:4px 7px;font-size:12px;width:100%;font-family:inherit;outline:none;background:#fff}
 .tier-inp:focus{border-color:#009688;box-shadow:0 0 0 2px rgba(0,150,136,.1)}
+.mcc-tag-wrap{position:relative}
+.mcc-tag-input{display:flex;flex-wrap:wrap;gap:4px;align-items:center;border:1.5px solid #e2e8f0;border-radius:7px;padding:4px 7px;min-height:32px;cursor:text;background:#fff;position:relative}
+.mcc-tag-input:focus-within{border-color:#009688;box-shadow:0 0 0 2px rgba(0,150,136,.1)}
+.mcc-tag{background:#e3f2fd;border:1px solid #90caf9;border-radius:5px;padding:2px 7px;font-size:11px;color:#1565c0;display:inline-flex;align-items:center;gap:5px;font-weight:700;white-space:nowrap}
+.mcc-tag-del{cursor:pointer;color:#90caf9;font-size:13px;line-height:1;font-weight:400}
+.mcc-tag-del:hover{color:#e53935}
+.mcc-search{border:none;outline:none;font-size:11px;min-width:70px;flex:1;font-family:inherit;background:transparent;padding:0}
+.mcc-dropdown{position:absolute;top:calc(100% + 2px);left:0;right:0;background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;max-height:200px;overflow-y:auto;z-index:200;box-shadow:0 6px 16px rgba(0,0,0,.1);display:none}
+.mcc-option{padding:7px 10px;font-size:11px;cursor:pointer;display:flex;gap:10px;align-items:baseline}
+.mcc-option:hover,.mcc-option.focused{background:#e3f2fd}
+.mcc-opt-code{font-weight:700;color:#1565c0;min-width:42px}
+.mcc-opt-desc{color:#334155}
+.fp-rule-card{border:1.5px solid #e2e8f0;border-radius:10px;padding:13px 14px;margin-bottom:10px;background:#fafbfc;position:relative}
+.fp-rule-card:hover{border-color:#90caf9}
+.fp-rule-hdr{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.fp-rule-label{flex:1;border:1.5px solid #e2e8f0;border-radius:7px;padding:5px 9px;font-size:12px;font-weight:600;color:#334155;outline:none;font-family:inherit;background:#fff}
+.fp-rule-label:focus{border-color:#009688}
+.fp-rule-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.fp-rule-sel{border:1.5px solid #e2e8f0;border-radius:7px;padding:4px 7px;font-size:11px;color:#334155;outline:none;font-family:inherit;background:#fff;cursor:pointer}
+.fp-rule-sel:focus{border-color:#009688}
+.fp-rule-inp{border:1.5px solid #e2e8f0;border-radius:7px;padding:4px 7px;font-size:12px;width:80px;font-family:inherit;outline:none;background:#fff}
+.fp-rule-inp:focus{border-color:#009688}
+.fp-trigger-box{background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:8px;padding:10px 12px;margin-top:8px}
+.fp-trigger-lbl{font-size:10px;font-weight:700;color:#2e7d32;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
 
 /* DWH NOTE */
 .dwh-note{background:#e0f2f1;border-radius:10px;padding:14px 18px;font-size:12px;color:#004d40;margin-bottom:20px;line-height:1.7}
@@ -341,6 +376,22 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
 
     <!-- ──── DASHBOARD ──── -->
     <div id="page-dashboard" class="page active">
+      <div class="dash-period-bar">
+        <span class="dash-period-lbl"><i class="fa-solid fa-calendar-days"></i> Dövr:</span>
+        <div class="dash-period-btns">
+          <button class="dash-period-btn active" data-period="30d" onclick="setDashPeriod('30d')">30 gün</button>
+          <button class="dash-period-btn" data-period="90d" onclick="setDashPeriod('90d')">90 gün</button>
+          <button class="dash-period-btn" data-period="1y" onclick="setDashPeriod('1y')">1 il</button>
+          <button class="dash-period-btn" data-period="all" onclick="setDashPeriod('all')">Hamısı</button>
+          <button class="dash-period-btn" data-period="custom" onclick="setDashPeriod('custom')">Xüsusi</button>
+        </div>
+        <div class="dash-custom-dates" id="dashCustomDates" style="display:none">
+          <input type="date" id="dashCustomFrom">
+          <span style="color:#94a3b8;font-size:13px">—</span>
+          <input type="date" id="dashCustomTo">
+          <button class="btn btn-primary btn-sm" onclick="applyCustomDashPeriod()"><i class="fa-solid fa-check"></i> Tətbiq et</button>
+        </div>
+      </div>
       <div class="kpi-grid kpi-grid-6" id="dashKpis"></div>
       <div class="notice warn" id="dashAlert" style="display:none">
         <i class="fa-solid fa-triangle-exclamation"></i>
@@ -348,11 +399,11 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
       </div>
       <div class="chart-grid chart-grid-2">
         <div class="chart-card">
-          <div class="chart-title"><i class="fa-solid fa-chart-area"></i> Əməliyyat Həcmi — Son 30 Gün</div>
+          <div class="chart-title"><i class="fa-solid fa-chart-area"></i> Əməliyyat Həcmi — <span id="dashTrendTitle">Son 30 Gün</span></div>
           <canvas id="trendChart" height="120"></canvas>
         </div>
         <div class="chart-card" style="display:flex;flex-direction:column">
-          <div class="chart-title"><i class="fa-solid fa-chart-pie"></i> Tərəfdaşlar üzrə Paylanma (30g)</div>
+          <div class="chart-title"><i class="fa-solid fa-chart-pie"></i> Tərəfdaşlar üzrə Paylanma (<span id="dashDonutTitle">30g</span>)</div>
           <div style="flex:1;display:flex;align-items:center;justify-content:center">
             <canvas id="donutChart" style="max-height:200px;max-width:200px"></canvas>
           </div>
@@ -360,7 +411,7 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
       </div>
       <div class="tcard">
         <div class="tcard-hdr">
-          <h3><i class="fa-solid fa-ranking-star" style="color:#f57c00"></i> Ən Yaxşı Tərəfdaşlar (30 gün)</h3>
+          <h3><i class="fa-solid fa-ranking-star" style="color:#f57c00"></i> Ən Yaxşı Tərəfdaşlar (<span id="dashBestPartnersTitle">30 gün</span>)</h3>
           <button class="btn btn-outline btn-sm" onclick="showPage('partners')">Hamısına bax</button>
         </div>
         <table id="dashPartnersTable"></table>
@@ -397,8 +448,8 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
       </div>
       <div class="tcard" style="margin-bottom:0">
         <div class="tcard-hdr">
-          <h3><i class="fa-solid fa-coins" style="color:#1565c0"></i> Tərəfdaş Bazasında Komisyon Hesablaması (30g Həcmə Görə)</h3>
-          <span style="font-size:11px;color:#94a3b8;font-weight:400">Hesablamalar 30 günlük əməliyyat həcminə və aktiv komisyon paketinin tier strukturuna əsaslanır</span>
+          <h3><i class="fa-solid fa-coins" style="color:#1565c0"></i> Tərəfdaş Bazasında Komisyon Hesablaması (<span id="dashFeeEstTitle">30g</span> Həcmə Görə)</h3>
+          <span style="font-size:11px;color:#94a3b8;font-weight:400">Hesablamalar seçilmiş dövrün əməliyyat həcminə və aktiv komisyon paketinin qaydalarına əsaslanır</span>
         </div>
         <table id="feeEstimateTable"></table>
       </div>
@@ -781,7 +832,7 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
 
 <!-- ══════════════════════════════ MODAL: Fee Package Form -->
 <div class="modal-bg" id="feePackageFormModal" onclick="if(event.target===this)closeModal('feePackageFormModal')">
-  <div class="modal" style="width:680px">
+  <div class="modal" style="width:760px;max-height:90vh;overflow-y:auto">
     <div class="modal-hdr">
       <h2 id="fpFormTitle"><i class="fa-solid fa-percent" style="color:#1565c0"></i> Yeni Komisyon Paketi</h2>
       <button class="modal-close" onclick="closeModal('feePackageFormModal')"><i class="fa-solid fa-xmark"></i></button>
@@ -812,25 +863,32 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
           <input type="date" id="fpf_to">
         </div>
       </div>
-      <div class="form-section" style="margin-top:18px">Komisyon Cədvəli (Tier-lər)</div>
+      <div class="form-section" style="margin-top:18px">Standart Komisyon</div>
       <div style="font-size:11px;color:#64748b;margin-bottom:10px">
         <i class="fa-solid fa-circle-info"></i>
-        Sonuncu sıranın "Həddə qədər" xanasını boş buraxın — limitsiz hesab ediləcək.
+        Heç bir xüsusi qayda uyğun gəlməsə, bu dərəcə tətbiq ediləcək.
       </div>
-      <table class="tiers-tbl" style="margin-bottom:10px">
-        <thead>
-          <tr>
-            <th style="min-width:130px">Başlanğıc (₼)</th>
-            <th style="min-width:130px">Həddə qədər (₼)</th>
-            <th style="min-width:110px">Komisyon (%)</th>
-            <th style="width:40px"></th>
-          </tr>
-        </thead>
-        <tbody id="fpTiersBody"></tbody>
-      </table>
-      <button class="btn btn-outline btn-sm" onclick="addFpTierRow()">
-        <i class="fa-solid fa-plus"></i> Sıra əlavə et
-      </button>
+      <div class="form-grid form-grid-2" style="margin-bottom:16px">
+        <div class="form-field">
+          <label>Standart dərəcə (%)</label>
+          <input type="number" id="fpf_default_pct" min="0" max="100" step="0.01" placeholder="0.50" class="tier-inp">
+        </div>
+        <div class="form-field">
+          <label>Minimum məbləğ (₼)</label>
+          <input type="number" id="fpf_default_min" min="0" step="0.01" placeholder="0.00" class="tier-inp">
+        </div>
+      </div>
+      <div class="form-section" style="margin-top:4px;display:flex;align-items:center;justify-content:space-between">
+        <span>Xüsusi Komisyon Qaydaları</span>
+        <button class="btn btn-outline btn-sm" onclick="addFpRule()">
+          <i class="fa-solid fa-plus"></i> Qayda əlavə et
+        </button>
+      </div>
+      <div style="font-size:11px;color:#64748b;margin-bottom:10px">
+        <i class="fa-solid fa-circle-info"></i>
+        Qaydalar yuxarıdan aşağı yoxlanılır — birinci uyğun gələn tətbiq edilir.
+      </div>
+      <div id="fpRulesContainer"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('feePackageFormModal')">Ləğv et</button>
@@ -903,8 +961,9 @@ function showModalTab(tabId){
 }
 
 // Per-partner transaction summary (AZN — Azerbaijani manat volumes)
-function buildSummary() {
-  // Per-partner totals from live cards + transactions (last 30 days for volumes).
+function buildSummary(fromISO, toISO) {
+  // Per-partner totals from live cards + transactions within the given period.
+  // fromISO/toISO: undefined = default last 30 days; null = no limit (all time).
   // Cards are joined to partners via PROD_TYPE_MAP (from prod_types lookup).
   const partnerCardCounts = {};
   CARDS.forEach(c => {
@@ -912,11 +971,18 @@ function buildSummary() {
     if(!pid) return;
     partnerCardCounts[pid] = (partnerCardCounts[pid]||0) + 1;
   });
-  const thirty = new Date(); thirty.setDate(thirty.getDate()-30);
-  const thirtyISO = thirty.toISOString().slice(0,10);
+  // Resolve period: undefined → 30-day default; null → no lower bound
+  let effectiveFrom = fromISO;
+  const effectiveTo = (toISO !== undefined && toISO !== null) ? toISO : new Date().toISOString().slice(0,10);
+  if(effectiveFrom === undefined){
+    const d=new Date(); d.setDate(d.getDate()-30);
+    effectiveFrom = d.toISOString().slice(0,10);
+  }
   const partnerTxn = {};
   TRANSACTIONS.forEach(t => {
-    if(!t.op_date || t.op_date < thirtyISO) return;
+    if(!t.op_date) return;
+    if(effectiveFrom !== null && t.op_date < effectiveFrom) return;
+    if(t.op_date > effectiveTo) return;
     const pid = PROD_TYPE_MAP[t.prod_type];
     if(!pid) return;
     if(!partnerTxn[pid]) partnerTxn[pid] = {vol:0, cnt:0};
@@ -940,81 +1006,146 @@ function buildSummary() {
   return s;
 }
 
-// Commission helpers
+// ── MCC groups ──────────────────────────────────────────────────────
+const MCC_FINANCIAL = new Set(['6010','6011','6012','6050','6051']);
+function mccGroup(code){ return MCC_FINANCIAL.has(String(code||'')) ? 'financial' : 'payment'; }
+function isLocalCountry(c){ return !c || c.toUpperCase()==='AZE'; }
+function txnOpType(t){ return isCreditOp(t.op_type) ? 'credit' : 'debet'; }
+
+// Does a transaction match a filter spec? (empty string = any)
+function txnMatchesFilter(t, f){
+  if(!f) return true;
+  if(f.op_type && f.op_type !== txnOpType(t)) return false;
+  if(f.geo){
+    const local=isLocalCountry(t.country);
+    if(f.geo==='local'&&!local) return false;
+    if(f.geo==='international'&&local) return false;
+  }
+  if(f.mcc_group && mccGroup(t.mcc) !== f.mcc_group) return false;
+  if(f.mcc_codes && f.mcc_codes.trim()){
+    const codes=f.mcc_codes.split(',').map(s=>s.trim()).filter(Boolean);
+    if(codes.length && !codes.includes(String(t.mcc||''))) return false;
+  }
+  return true;
+}
+
+// Returns Set of rule IDs whose turnover triggers are satisfied (or have no trigger)
+function evaluateTriggers(config, txns){
+  const active=new Set();
+  if(!config||!config.rules) return active;
+  const now=new Date();
+  for(const rule of config.rules){
+    if(!rule.turnover_trigger){ active.add(rule.id); continue; }
+    const tr=rule.turnover_trigger;
+    const ps=tr.period==='yearly'
+      ? new Date(now.getFullYear(),0,1).toISOString().slice(0,10)
+      : new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+    const tf={op_type:tr.filter_op_type||'',geo:tr.filter_geo||'',
+              mcc_group:tr.filter_mcc_group||'',mcc_codes:tr.filter_mcc_codes||''};
+    let vol=0;
+    for(const t of txns){ if((t.op_date||'')>=ps && txnMatchesFilter(t,tf)) vol+=t.amt; }
+    if(vol>=(tr.threshold||0)) active.add(rule.id);
+  }
+  return active;
+}
+
+// Commission for a single transaction
+function calcTxnCommission(config, t, activeTriggers){
+  if(!config) return 0;
+  const dflt=config.default||{pct:0,min_amt:0};
+  for(const rule of (config.rules||[])){
+    if(!activeTriggers.has(rule.id)) continue;
+    if(!txnMatchesFilter(t, rule.filters||{})) continue;
+    return Math.max(t.amt*(rule.pct||0)/100, rule.min_amt||0);
+  }
+  return Math.max(t.amt*(dflt.pct||0)/100, dflt.min_amt||0);
+}
+
+// Total commission for a set of transactions
+function calcEstimatedCommission(config, txns){
+  if(!config||!txns||!txns.length) return{commission:0,rate:0};
+  const triggers=evaluateTriggers(config,txns);
+  let total=0;
+  for(const t of txns) total+=calcTxnCommission(config,t,triggers);
+  const vol=txns.reduce((s,t)=>s+t.amt,0);
+  return{commission:total,rate:vol>0?total/vol*100:0};
+}
+
+// Legacy wrapper — supports both old array format and new config object
 function calcCommission(tiers, volume){
-  if(!tiers||!tiers.length||!volume) return{rate:0,commission:0,tier:null};
+  if(!tiers||!volume) return{rate:0,commission:0,tier:null};
+  if(tiers && typeof tiers==='object' && !Array.isArray(tiers)){
+    const dflt=tiers.default||{pct:0,min_amt:0};
+    const commission=Math.max(volume*(dflt.pct||0)/100, dflt.min_amt||0);
+    return{rate:dflt.pct||0,commission,tier:null};
+  }
+  if(!Array.isArray(tiers)||!tiers.length) return{rate:0,commission:0,tier:null};
   for(const t of tiers){
-    const lo=t.from||0;
-    const hi=(t.to===null||t.to===undefined)?Infinity:Number(t.to);
+    const lo=t.from||0, hi=(t.to===null||t.to===undefined)?Infinity:Number(t.to);
     if(volume>=lo&&volume<=hi) return{rate:Number(t.rate),commission:volume*Number(t.rate)/100,tier:t};
   }
   const last=tiers[tiers.length-1];
   return{rate:Number(last.rate),commission:volume*Number(last.rate)/100,tier:last};
 }
 
-// Returns {rate, tierNo, totalTiers, turnover, tier} for a partner's CURRENT
-// applicable commission tier. Tier is selected by the partner's accumulated
-// turnover from the active deal's start_date through today.
-// Returns null when the partner has no active package or no active fee_package.
 function currentApplicableTier(partnerId){
-  // Find the active fee_package for this partner
-  const fps = (FEE_PACKAGES[partnerId]||[]).filter(f => f.status === 'active');
-  if(!fps.length || !fps[0].tiers || !fps[0].tiers.length) return null;
-  const fp = fps[0];
-  // Find the period start: prefer deal.start_date, fall back to the active package's from
-  let startISO = '';
-  if (DEALS && DEALS.length) {
-    const deal = DEALS.find(d => d.partner_id === partnerId && d.status === 'active');
-    if (deal && deal.start_date) startISO = deal.start_date;
+  const fps=(FEE_PACKAGES[partnerId]||[]).filter(f=>f.status==='active');
+  if(!fps.length) return null;
+  const fp=fps[0]; const config=fp.tiers;
+  if(!config) return null;
+  let startISO='';
+  if(DEALS&&DEALS.length){
+    const deal=DEALS.find(d=>d.partner_id===partnerId&&d.status==='active');
+    if(deal&&deal.start_date) startISO=deal.start_date;
   }
-  if (!startISO) {
-    const pkg = PACKAGES.find(p => p.pid === partnerId && p.status === 'active');
-    if (pkg && pkg.from) startISO = pkg.from;
+  if(!startISO){
+    const pkg=PACKAGES.find(p=>p.pid===partnerId&&p.status==='active');
+    if(pkg&&pkg.from) startISO=pkg.from;
   }
-  if (!startISO) return null; // No package window → cannot scope turnover
-  const todayISO = new Date().toISOString().slice(0,10);
-  // Accumulate turnover from package start to today, for this partner's prod_types
-  let turnover = 0;
-  TRANSACTIONS.forEach(t => {
-    if (!t.op_date || t.op_date < startISO || t.op_date > todayISO) return;
-    const pid = PROD_TYPE_MAP[t.prod_type];
-    if (pid !== partnerId) return;
-    turnover += t.amt;
+  if(!startISO) return null;
+  const todayISO=new Date().toISOString().slice(0,10);
+  const partnerTxns=TRANSACTIONS.filter(t=>{
+    if(!t.op_date||t.op_date<startISO||t.op_date>todayISO) return false;
+    return PROD_TYPE_MAP[t.prod_type]===partnerId;
   });
-  // Find the tier the turnover falls into
-  const tiers = fp.tiers;
-  for (let i = 0; i < tiers.length; i++) {
-    const t  = tiers[i];
-    const lo = Number(t.from) || 0;
-    const hi = (t.to === null || t.to === undefined) ? Infinity : Number(t.to);
-    if (turnover >= lo && turnover <= hi) {
-      return {rate:Number(t.rate), tierNo:i+1, totalTiers:tiers.length, turnover, tier:t, periodStart:startISO};
-    }
-  }
-  // Above all tiers → use the last one
-  const last = tiers[tiers.length-1];
-  return {rate:Number(last.rate), tierNo:tiers.length, totalTiers:tiers.length, turnover, tier:last, periodStart:startISO};
+  const turnover=partnerTxns.reduce((s,t)=>s+t.amt,0);
+  const{commission,rate}=calcEstimatedCommission(config,partnerTxns);
+  const dfltPct=(config.default||{}).pct||0;
+  const rulesCount=(config.rules||[]).length;
+  return{rate:dfltPct,effectiveRate:rate,commission,turnover,
+         totalTiers:rulesCount,tierNo:1,tier:config.default,periodStart:startISO};
 }
 
-function buildFeeStats(){
+function buildFeeStats(fromISO, toISO){
   const allFps=Object.values(FEE_PACKAGES).flat();
   const activeFps=allFps.filter(fp=>fp.status==='active');
   const pidsWithFp=new Set(activeFps.map(fp=>fp.partner_id));
   const activePartners=PARTNERS.filter(p=>p.status==='active');
   const partnersWithout=activePartners.filter(p=>!pidsWithFp.has(p.id));
-  // Total estimated commission from 30d volumes
-  const sum=buildSummary();
+  // Resolve period (same logic as buildSummary)
+  let effectiveFrom = fromISO;
+  const effectiveTo = (toISO !== undefined && toISO !== null) ? toISO : new Date().toISOString().slice(0,10);
+  if(effectiveFrom === undefined){
+    const d=new Date(); d.setDate(d.getDate()-30);
+    effectiveFrom = d.toISOString().slice(0,10);
+  }
   let totalEst=0;
   activePartners.forEach(p=>{
-    const vol=sum[p.id]?.vol||0;
     const fps=(FEE_PACKAGES[p.id]||[]).filter(fp=>fp.status==='active');
-    if(fps.length&&vol>0){
-      const{commission}=calcCommission(fps[0].tiers,vol);
+    if(fps.length){
+      const pTxns=TRANSACTIONS.filter(t=>{
+        if(PROD_TYPE_MAP[t.prod_type]!==p.id) return false;
+        if(!t.op_date) return false;
+        if(effectiveFrom!==null && t.op_date<effectiveFrom) return false;
+        if(t.op_date>effectiveTo) return false;
+        return true;
+      });
+      const{commission}=calcEstimatedCommission(fps[0].tiers,pTxns);
       totalEst+=commission;
     }
   });
   // Tier counts
-  const totalTiers=activeFps.reduce((s,fp)=>s+(fp.tiers?.length||0),0);
+  const totalTiers=activeFps.reduce((s,fp)=>s+((fp.tiers?.rules||[]).length||0),0);
   const avgTiers=activeFps.length?totalTiers/activeFps.length:0;
   return{total:allFps.length,active:activeFps.length,
     pidsWithFp,partnersWithout,totalEst,avgTiers};
@@ -1079,9 +1210,16 @@ function docFromDb(r){
   return{id:Number(r.id),name:r.name,size:r.size||0,mime:r.mime||'',date:r.date||'',note:r.note||'',storage_path:r.storage_path||''};
 }
 function feePackageFromDb(r){
-  return{id:Number(r.id),partner_id:Number(r.partner_id),name:r.name||'',status:r.status||'active',
-    effective_from:r.effective_from||'',effective_to:r.effective_to||'',
-    tiers:Array.isArray(r.tiers)?r.tiers:(typeof r.tiers==='string'?JSON.parse(r.tiers):[])};
+  let cfg=r.tiers;
+  if(typeof cfg==='string'){try{cfg=JSON.parse(cfg);}catch{cfg=null;}}
+  if(Array.isArray(cfg)){
+    const base=cfg.length?Number(cfg[0].rate):0;
+    cfg={default:{pct:base,min_amt:0},rules:[]};
+  }
+  if(!cfg||typeof cfg!=='object') cfg={default:{pct:0,min_amt:0},rules:[]};
+  return{id:Number(r.id),partner_id:Number(r.partner_id),name:r.name||'',
+    status:r.status||'active',effective_from:r.effective_from||'',
+    effective_to:r.effective_to||'',tiers:cfg};
 }
 // mcc_codes → MCC_LABELS map  {mcc_code → name_az}
 function buildMccLabels(rows){ const m={}; rows.forEach(r=>{ m[r.mcc_code]=r.name_az||r.name_en||r.mcc_code; }); return m; }
@@ -1221,9 +1359,11 @@ async function loadData(){
       console.warn('cards not found, run migration v6:', e.message);
     }
 
-    // transactions — all rows (no date cap; filter happens in the UI)
+    // transactions — last 90 days (covers all UI windows + commission calculations)
     try{
-      const txnRows = await sb('GET','transactions',null,`?order=op_date.desc&limit=500000`)||[];
+      const txnCutoff=new Date(); txnCutoff.setDate(txnCutoff.getDate()-90);
+      const txnFrom=txnCutoff.toISOString().slice(0,10);
+      const txnRows = await sb('GET','transactions',null,`?op_date=gte.${txnFrom}&order=op_date.desc&limit=50000`)||[];
       if(txnRows.length) TRANSACTIONS = txnRows.map(txnFromDb);
     }catch(e){
       console.warn('transactions not found, run migration v6:', e.message);
@@ -1429,16 +1569,92 @@ async function manualRefresh(){
 
 // ═══════════════════════ CHARTS
 let trendChart,donutChart,barChart,feeRateChart;
+
+// ── Dashboard period state ─────────────────────────────────────────
+let DASH_PERIOD = {type:'30d', fromISO:null, toISO:null};
+
+function dashPeriodDates(){
+  // All periods end at sysdate-1 (yesterday), never include today.
+  const yest=new Date(); yest.setDate(yest.getDate()-1);
+  const toISO=yest.toISOString().slice(0,10);
+  if(DASH_PERIOD.type==='30d'){
+    const f=new Date(); f.setDate(f.getDate()-31);   // sysdate-31 → sysdate-1
+    return{fromISO:f.toISOString().slice(0,10), toISO};
+  }
+  if(DASH_PERIOD.type==='90d'){
+    const f=new Date(); f.setDate(f.getDate()-91);   // sysdate-91 → sysdate-1
+    return{fromISO:f.toISOString().slice(0,10), toISO};
+  }
+  if(DASH_PERIOD.type==='1y'){
+    const f=new Date(); f.setFullYear(f.getFullYear()-1); f.setDate(f.getDate()-1);
+    return{fromISO:f.toISOString().slice(0,10), toISO};
+  }
+  if(DASH_PERIOD.type==='all') return{fromISO:null, toISO};  // all data, still ends yesterday
+  if(DASH_PERIOD.type==='custom') return{fromISO:DASH_PERIOD.fromISO||null, toISO:DASH_PERIOD.toISO||toISO};
+  const f=new Date(); f.setDate(f.getDate()-31);
+  return{fromISO:f.toISOString().slice(0,10), toISO};
+}
+
+function dashPeriodLabel(){
+  if(DASH_PERIOD.type==='30d') return '30 gün';
+  if(DASH_PERIOD.type==='90d') return '90 gün';
+  if(DASH_PERIOD.type==='1y') return '1 il';
+  if(DASH_PERIOD.type==='all') return 'bütün vaxt';
+  if(DASH_PERIOD.type==='custom'){
+    const f=DASH_PERIOD.fromISO||''; const t=DASH_PERIOD.toISO||'';
+    return f&&t ? f.slice(5)+' – '+t.slice(5) : 'xüsusi';
+  }
+  return '30 gün';
+}
+
+function dashPeriodShort(){
+  if(DASH_PERIOD.type==='30d') return '30g';
+  if(DASH_PERIOD.type==='90d') return '90g';
+  if(DASH_PERIOD.type==='1y') return '1il';
+  if(DASH_PERIOD.type==='all') return 'all';
+  return 'xüs';
+}
+
+function setDashPeriod(type){
+  DASH_PERIOD.type=type;
+  document.querySelectorAll('.dash-period-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.period===type);
+  });
+  const customEl=document.getElementById('dashCustomDates');
+  if(customEl) customEl.style.display=(type==='custom'?'flex':'none');
+  if(type!=='custom') applyDashPeriod();
+}
+
+function applyCustomDashPeriod(){
+  DASH_PERIOD.fromISO=document.getElementById('dashCustomFrom').value||null;
+  DASH_PERIOD.toISO=document.getElementById('dashCustomTo').value||null;
+  if(!DASH_PERIOD.fromISO&&!DASH_PERIOD.toISO) return;
+  applyDashPeriod();
+}
+
+function applyDashPeriod(){
+  renderDashboard();
+}
 function destroyChart(c){if(c){try{c.destroy()}catch(e){}}}
 
 function genDailyData(partnerId=0, fromISO=null, toISO=null, opTypeFilter=''){
   // Aggregate real transactions by day within the given date range.
   // partnerId=0 → all partners; otherwise filter via PROD_TYPE_MAP.
   // opTypeFilter: '' = all, 'D' = debet only, 'C' = kredit only
-  // When fromISO/toISO are omitted, defaults to last 30 days (dashboard use).
+  // fromISO/toISO: undefined = default 30 days; null = use full available range.
   const today = new Date();
-  const endDate   = toISO   ? new Date(toISO)   : new Date(today);
-  const startDate = fromISO ? new Date(fromISO)  : new Date(new Date().setDate(today.getDate()-29));
+  const endDate = toISO ? new Date(toISO) : new Date(today);
+  let startDate;
+  if(fromISO === undefined || fromISO === null && toISO === undefined){
+    // Default: last 30 days
+    startDate = new Date(new Date().setDate(today.getDate()-29));
+  } else if(fromISO === null){
+    // All time: find earliest available transaction
+    const dates = TRANSACTIONS.map(t=>t.op_date).filter(Boolean).sort();
+    startDate = dates.length ? new Date(dates[0]) : new Date(new Date().setDate(today.getDate()-29));
+  } else {
+    startDate = new Date(fromISO);
+  }
 
   const buckets = {};
   for(let d = new Date(startDate); d <= endDate; d.setDate(d.getDate()+1)){
@@ -1460,8 +1676,8 @@ function genDailyData(partnerId=0, fromISO=null, toISO=null, opTypeFilter=''){
   return Object.values(buckets);
 }
 
-function initTrendChart(){
-  const daily=genDailyData(0);
+function initTrendChart(fromISO, toISO){
+  const daily=genDailyData(0, fromISO, toISO);
   destroyChart(trendChart);
   trendChart=new Chart(document.getElementById('trendChart').getContext('2d'),{
     type:'line',
@@ -1486,8 +1702,8 @@ function initTrendChart(){
   });
 }
 
-function initDonutChart(){
-  const sum=buildSummary();
+function initDonutChart(fromISO, toISO){
+  const sum=buildSummary(fromISO, toISO);
   const active=PARTNERS.filter(p=>p.status==='active');
   const colors=['#009688','#43a047','#f57c00','#8e24aa','#00897b','#e53935','#1e88e5','#795548'];
   destroyChart(donutChart);
@@ -1534,13 +1750,47 @@ function renderBarChart(partnerId,currency,fromISO=null,toISO=null,opTypeFilter=
 
 // ═══════════════════════ DASHBOARD
 function renderDashboard(){
-  const sum=buildSummary();
+  const{fromISO,toISO}=dashPeriodDates();
+  const periodLbl=dashPeriodLabel();
+  const periodShort=dashPeriodShort();
+
+  // Update chart/section title spans
+  const trendTitleEl=document.getElementById('dashTrendTitle');
+  const donutTitleEl=document.getElementById('dashDonutTitle');
+  if(trendTitleEl) trendTitleEl.textContent='Son '+periodLbl;
+  if(donutTitleEl) donutTitleEl.textContent=periodShort;
+
+  // Rebuild charts for new period
+  initTrendChart(fromISO, toISO);
+  initDonutChart(fromISO, toISO);
+
+  const sum=buildSummary(fromISO, toISO);
+
+  // Packages that overlapped the selected period (for period-sensitive KPIs)
+  const periodPkgs=PACKAGES.filter(pk=>{
+    const pkFrom=pk.from||'';
+    const pkTo=pk.to||'9999-12-31';
+    if(toISO && pkFrom > toISO) return false;   // package hasn't started yet within period
+    if(fromISO && pkTo < fromISO) return false; // package already ended before period
+    return true;
+  });
+
   const active=PARTNERS.filter(p=>p.status==='active');
-  const activePkgs=PACKAGES.filter(pk=>pk.status==='active');
-  const totalIssued=PACKAGES.reduce((s,pk)=>s+pk.issued,0);
-  const totalRem=PACKAGES.reduce((s,pk)=>s+pk.rem,0);
-  const totalSize=PACKAGES.reduce((s,pk)=>s+pk.size,0);
-  const usagePct=totalSize>0?Math.round(totalIssued/totalSize*1000)/10:0;
+  const activePkgs=periodPkgs.filter(pk=>pk.status==='active');
+
+  // Buraxılmış: count cards with issue_date within the selected period
+  const totalIssued=CARDS.filter(c=>{
+    if(!c.issue_date) return false;
+    if(fromISO!==null && c.issue_date<fromISO) return false;
+    if(toISO!==null && c.issue_date>toISO) return false;
+    return true;
+  }).length;
+
+  // Qalan / utilisation: package-level capacity minus current total issued (current-state metric)
+  const totalRem=periodPkgs.reduce((s,pk)=>s+pk.rem,0);
+  const totalSize=periodPkgs.reduce((s,pk)=>s+pk.size,0);
+  const totalPkgIssued=periodPkgs.reduce((s,pk)=>s+pk.issued,0);
+  const usagePct=totalSize>0?Math.round(totalPkgIssued/totalSize*1000)/10:0;
   const totalVol=Object.values(sum).reduce((s,p)=>s+p.vol,0);
   const totalCnt=Object.values(sum).reduce((s,p)=>s+p.cnt,0);
 
@@ -1548,14 +1798,14 @@ function renderDashboard(){
     <div class="kpi-card"><div class="kpi-lbl"><i class="fa-solid fa-handshake"></i> Aktiv Tərəfdaşlar</div>
       <div class="kpi-val">${active.length}</div><div class="kpi-sub">${PARTNERS.length} tərəfdaşdan</div></div>
     <div class="kpi-card c-green"><div class="kpi-lbl"><i class="fa-solid fa-box"></i> Aktiv Paketlər</div>
-      <div class="kpi-val">${activePkgs.length}</div><div class="kpi-sub">${PACKAGES.length} paketin</div></div>
+      <div class="kpi-val">${activePkgs.length}</div><div class="kpi-sub">${periodPkgs.length} paket dövrdə aktiv</div></div>
     <div class="kpi-card c-purple"><div class="kpi-lbl"><i class="fa-solid fa-credit-card"></i> Buraxılmış Kartlar</div>
-      <div class="kpi-val">${fmtN(totalIssued)}</div><div class="kpi-sub">Bütün paketlər üzrə</div></div>
+      <div class="kpi-val">${fmtN(totalIssued)}</div><div class="kpi-sub">Dövrdəki paketlər üzrə</div></div>
     <div class="kpi-card c-teal"><div class="kpi-lbl"><i class="fa-solid fa-circle-minus"></i> Qalan Kartlar</div>
-      <div class="kpi-val">${fmtN(totalRem)}</div><div class="kpi-sub">Paketlərdə qalıb</div></div>
+      <div class="kpi-val">${fmtN(totalRem)}</div><div class="kpi-sub">Dövrdəki paketlərdə qalıb</div></div>
     <div class="kpi-card c-orange"><div class="kpi-lbl"><i class="fa-solid fa-percent"></i> Ort. Paket İstifadəsi</div>
-      <div class="kpi-val">${usagePct}%</div><div class="kpi-sub">Paket yükü</div></div>
-    <div class="kpi-card"><div class="kpi-lbl"><i class="fa-solid fa-arrow-right-arrow-left"></i> Əməliyyat Həcmi (30g)</div>
+      <div class="kpi-val">${usagePct}%</div><div class="kpi-sub">Dövrdəki paket yükü</div></div>
+    <div class="kpi-card"><div class="kpi-lbl"><i class="fa-solid fa-arrow-right-arrow-left"></i> Əməliyyat Həcmi (${periodShort})</div>
       <div class="kpi-val" style="font-size:18px">${fmtMoney(totalVol)}</div>
       <div class="kpi-sub">${fmtN(totalCnt)} əməliyyat</div></div>`;
 
@@ -1575,7 +1825,7 @@ function renderDashboard(){
   const totalV=Object.values(sum).reduce((s,p)=>s+p.vol,0)||1;
   let html=`<thead><tr><th>#</th><th>Tərəfdaş</th><th>Buraxılmış</th><th>Qalan</th>
     <th style="min-width:140px">Paket İstifadəsi</th>
-    <th class="r">Həcm (30g)</th><th class="r">Say (30g)</th><th>Ətraflı</th>
+    <th class="r">Həcm (${periodShort})</th><th class="r">Say (${periodShort})</th><th>Ətraflı</th>
   </tr></thead><tbody>`;
   sorted.forEach((p,i)=>{
     const s=sum[p.id]||{};
@@ -1590,13 +1840,15 @@ function renderDashboard(){
       </button></td></tr>`;
   });
   document.getElementById('dashPartnersTable').innerHTML=html+'</tbody>';
+  const bpEl=document.getElementById('dashBestPartnersTitle');
+  if(bpEl) bpEl.textContent=periodLbl;
 
-  // All packages
+  // All packages (filtered to those active during the selected period)
   let phtml=`<thead><tr><th>Paket ID</th><th>Tərəfdaş</th>
     <th class="r">Həcm</th><th class="r">Buraxılmış</th><th class="r">Qalan</th>
     <th style="min-width:150px">İstifadə</th><th>Müddət</th><th>Status</th>
   </tr></thead><tbody>`;
-  PACKAGES.forEach(pk=>{
+  periodPkgs.forEach(pk=>{
     phtml+=`<tr><td class="mono">PKG-${String(pk.id).padStart(3,'0')}</td>
       <td>${pname(pk.pid)}</td>
       <td class="r">${fmtN(pk.size)}</td><td class="r">${fmtN(pk.issued)}</td><td class="r">${fmtN(pk.rem)}</td>
@@ -1607,8 +1859,8 @@ function renderDashboard(){
   document.getElementById('allPackagesTable').innerHTML=phtml+'</tbody>';
 
   // ── FEE PACKAGES ANALYTICS ──────────────────────────────────────
-  const fs=buildFeeStats();
-  const sum2=buildSummary();
+  const fs=buildFeeStats(fromISO, toISO);
+  const sum2=buildSummary(fromISO, toISO);
 
   // KPIs
   document.getElementById('feeKpis').innerHTML=`
@@ -1625,9 +1877,9 @@ function renderDashboard(){
       <div class="kpi-val" style="color:${fs.partnersWithout.length>0?'#e53935':'#43a047'}">${fs.partnersWithout.length}</div>
       <div class="kpi-sub">${fs.partnersWithout.length>0?fs.partnersWithout.map(p=>p.name).join(', '):'Hamısı əhatə olunub ✓'}</div></div>
     <div class="kpi-card" style="border-color:#6a1b9a">
-      <div class="kpi-lbl"><i class="fa-solid fa-coins"></i> Təxmini Komisyon (30g)</div>
+      <div class="kpi-lbl"><i class="fa-solid fa-coins"></i> Təxmini Komisyon (${periodShort})</div>
       <div class="kpi-val" style="font-size:18px;color:#6a1b9a">${fmtMoney(fs.totalEst)}</div>
-      <div class="kpi-sub">30g əməliyyat həcminə görə</div></div>`;
+      <div class="kpi-sub">${periodLbl} əməliyyat həcminə görə</div></div>`;
 
   // Fee alert
   const feeAlertEl=document.getElementById('feeAlert');
@@ -1641,41 +1893,38 @@ function renderDashboard(){
   const allFps=Object.values(FEE_PACKAGES).flat().filter(fp=>fp.status==='active');
   let ftHtml=`<thead><tr>
     <th>Tərəfdaş</th><th>Paket Adı</th><th>Müddət</th>
-    <th class="r">Cari Dərəcə</th><th class="r">Tier</th>
+    <th class="r">Standart %</th><th class="r">Qaydalar</th>
     <th class="r">Cari Dövriyyə</th><th>Status</th>
   </tr></thead><tbody>`;
   if(allFps.length){
     allFps.forEach(fp=>{
       const p=PARTNERS.find(x=>x.id===fp.partner_id);
-      const tiers=fp.tiers||[];
-      const cur = p ? currentApplicableTier(p.id) : null;
+      const config=fp.tiers||{};
       // Show period from deal if present, otherwise fp.effective_from/_to
       const deal = (DEALS||[]).find(d => p && d.partner_id===p.id && d.status==='active');
-      const periodLabel = deal && deal.start_date
+      const fpPeriodLabel = deal && deal.start_date
         ? fmtDate(deal.start_date)+' – '+(deal.end_date?fmtDate(deal.end_date):'∞')
         : (fp.effective_from?fmtDate(fp.effective_from)+' – '+fmtDate(fp.effective_to):'Müddətsiz');
 
-      let rateCell, tierCell, turnoverCell;
-      if (cur) {
-        rateCell     = `<strong style="color:#1565c0">${cur.rate}%</strong>`;
-        tierCell     = `<span style="font-size:11px;color:#64748b">${cur.tierNo}/${cur.totalTiers}</span>`;
-        turnoverCell = `<span style="font-size:11px;color:#64748b" title="Paket başlanğıcından bu günə qədər">${fmtMoney(cur.turnover)}</span>`;
-      } else if (tiers.length) {
-        // Fee package exists but no active deal/package → fall back to lowest tier rate
-        const firstRate = Number(tiers[0].rate);
-        rateCell     = `<span style="color:#94a3b8" title="Aktiv paket yoxdur — ən aşağı tier göstərilir">${firstRate}%</span>`;
-        tierCell     = `<span style="font-size:11px;color:#94a3b8">1/${tiers.length}</span>`;
-        turnoverCell = `<span style="font-size:11px;color:#94a3b8">—</span>`;
-      } else {
-        rateCell     = `<span style="color:#94a3b8">—</span>`;
-        tierCell     = `<span style="font-size:11px;color:#94a3b8">—</span>`;
-        turnoverCell = `<span style="font-size:11px;color:#94a3b8">—</span>`;
-      }
+      const dfltPct=(config.default||{}).pct||0;
+      const rulesCount=(config.rules||[]).length;
+
+      // Compute turnover using dashboard period (not deal-to-date)
+      const periodTurnover = p ? TRANSACTIONS.reduce((s,t)=>{
+        if(PROD_TYPE_MAP[t.prod_type]!==p.id||!t.op_date) return s;
+        if(fromISO!==null && t.op_date<fromISO) return s;
+        if(toISO!==null && t.op_date>toISO) return s;
+        return s+t.amt;
+      },0) : 0;
+
+      const rateCell   = `<strong style="color:#1565c0">${dfltPct}%</strong>`;
+      const tierCell   = `<span style="font-size:11px;color:#64748b">${rulesCount} qayda</span>`;
+      const turnoverCell = `<span style="font-size:11px;color:#64748b">${fmtMoney(periodTurnover)}</span>`;
 
       ftHtml+=`<tr>
         <td><strong>${p?p.name:'—'}</strong></td>
         <td style="font-size:12px">${fp.name}</td>
-        <td style="font-size:11px;color:#64748b">${periodLabel}</td>
+        <td style="font-size:11px;color:#64748b">${fpPeriodLabel}</td>
         <td class="r">${rateCell}</td>
         <td class="r">${tierCell}</td>
         <td class="r">${turnoverCell}</td>
@@ -1689,9 +1938,9 @@ function renderDashboard(){
 
   // Fee estimate table
   let feHtml=`<thead><tr>
-    <th>Tərəfdaş</th><th class="r">30g Həcm</th>
-    <th class="r">Tətbiq Tier</th><th class="r">Dərəcə</th>
-    <th class="r">Təxmini Komisyon</th><th class="r">Komissyon / Həcm</th>
+    <th>Tərəfdaş</th><th class="r">Həcm (${periodShort})</th>
+    <th class="r">Ortalama Dərəcə</th>
+    <th class="r">Təxmini Komisyon</th><th class="r">Effektiv (faktiki) komissiya</th>
   </tr></thead><tbody>`;
   const activePartnersF=PARTNERS.filter(p=>p.status==='active');
   let grandTotal=0;
@@ -1703,21 +1952,26 @@ function renderDashboard(){
         <td><strong>${p.name}</strong></td>
         <td class="r">${fmtMoney(vol)}</td>
         <td class="r" colspan="3" style="color:#94a3b8;font-size:11px">Aktiv komisyon paketi yoxdur</td>
-        <td></td></tr>`;
+        </tr>`;
       return;
     }
     const fp=fps[0];
-    const{rate,commission,tier}=calcCommission(fp.tiers,vol);
+    const pTxns=TRANSACTIONS.filter(t=>{
+      if(PROD_TYPE_MAP[t.prod_type]!==p.id) return false;
+      if(!t.op_date) return false;
+      if(fromISO!==null && t.op_date<fromISO) return false;
+      if(toISO!==null && t.op_date>toISO) return false;
+      return true;
+    });
+    const{commission,rate}=calcEstimatedCommission(fp.tiers,pTxns);
     grandTotal+=commission;
-    const tierLabel=tier?(fmtN(tier.from)+'–'+(tier.to===null||tier.to===undefined?'∞':fmtN(tier.to))+' ₼'):'—';
     const share=vol>0?(commission/vol*100).toFixed(2):0;
     const barW=Math.min(100,commission/Math.max(1,fs.totalEst)*100).toFixed(1);
     feHtml+=`<tr>
       <td><strong>${p.name}</strong>
         <div style="font-size:10px;color:#94a3b8">${fp.name}</div></td>
       <td class="r"><strong>${fmtMoney(vol)}</strong></td>
-      <td class="r" style="font-size:11px;color:#64748b">${tierLabel}</td>
-      <td class="r"><strong style="color:#1565c0">${rate}%</strong></td>
+      <td class="r"><strong style="color:#1565c0">${rate.toFixed(3)}%</strong></td>
       <td class="r">
         <strong style="color:#6a1b9a">${fmtMoney(commission)}</strong>
         <div style="height:4px;background:#e2e8f0;border-radius:2px;margin-top:3px;overflow:hidden">
@@ -1728,32 +1982,29 @@ function renderDashboard(){
     </tr>`;
   });
   feHtml+=`<tr style="background:#f3e5f5;font-weight:700">
-    <td colspan="4" style="text-align:right;color:#6a1b9a;padding:10px 14px">
+    <td colspan="3" style="text-align:right;color:#6a1b9a;padding:10px 14px">
       <i class="fa-solid fa-sigma"></i> Ümumi Təxmini Komisyon:</td>
     <td class="r" style="color:#6a1b9a;font-size:15px">${fmtMoney(grandTotal)}</td>
     <td></td></tr>`;
   document.getElementById('feeEstimateTable').innerHTML=feHtml+'</tbody>';
+  const feeEstTitleEl=document.getElementById('dashFeeEstTitle');
+  if(feeEstTitleEl) feeEstTitleEl.textContent=periodShort;
 
   // Fee rate bar chart
   destroyChart(feeRateChart);
   const fpLabels=[];const fpDatasets=[];
-  const tierColors=['#1565c0','#1976d2','#42a5f5','#90caf9','#bbdefb'];
-  // Collect all active fps with tiers
   const activeFpsForChart=PARTNERS.map(p=>{
     const fp=(FEE_PACKAGES[p.id]||[]).find(x=>x.status==='active');
-    return fp?{partner:p.name,tiers:fp.tiers||[]}:null;
+    const cfg=fp?fp.tiers:null;
+    if(!cfg) return null;
+    return{partner:p.name,defaultPct:(cfg.default||{}).pct||0,rulesCount:(cfg.rules||[]).length};
   }).filter(Boolean);
   if(activeFpsForChart.length){
     activeFpsForChart.forEach(d=>fpLabels.push(d.partner.length>12?d.partner.slice(0,12)+'…':d.partner));
-    const maxTiers=Math.max(...activeFpsForChart.map(d=>d.tiers.length));
-    for(let i=0;i<maxTiers;i++){
-      fpDatasets.push({
-        label:`Tier ${i+1}`,
-        data:activeFpsForChart.map(d=>d.tiers[i]?d.tiers[i].rate:null),
-        backgroundColor:tierColors[i%tierColors.length],
-        borderRadius:4,borderSkipped:false,
-      });
-    }
+    fpDatasets.push({label:'Standart %',data:activeFpsForChart.map(d=>d.defaultPct),
+      backgroundColor:'#1565c0',borderRadius:4,borderSkipped:false});
+    fpDatasets.push({label:'Qaydalar',data:activeFpsForChart.map(d=>d.rulesCount),
+      backgroundColor:'#42a5f5',borderRadius:4,borderSkipped:false});
     const ctx=document.getElementById('feeRateChart');
     if(ctx){
       feeRateChart=new Chart(ctx.getContext('2d'),{
@@ -1794,7 +2045,6 @@ function renderPartnersPage(){
     <th>Tərəfdaş</th><th>Status</th><th>Menecer</th>
     <th class="r">Kart Pkt.</th><th class="r">Buraxılmış</th>
     <th style="min-width:120px">İstifadə</th>
-    <th class="r">Həcm (30g)</th>
     <th>Komisyon Paketi</th>
     <th>Əməliyyatlar</th>
   </tr></thead><tbody>`;
@@ -1806,20 +2056,18 @@ function renderPartnersPage(){
     const fp=fps[0];
     let feeCell;
     if(fp){
-      const cur = currentApplicableTier(p.id);
-      const tiers = fp.tiers || [];
-      const nameLine = `<div style="font-size:11px;font-weight:600;color:#1565c0">${fp.name.length>22?fp.name.slice(0,22)+'…':fp.name}</div>`;
-      if (cur) {
-        feeCell = nameLine
-          + `<div style="font-size:10px;color:#64748b;margin-top:1px"><strong style="color:#1565c0">${cur.rate}%</strong> · tier ${cur.tierNo}/${cur.totalTiers}</div>`
-          + `<div style="font-size:10px;color:#6a1b9a;margin-top:1px"><i class="fa-solid fa-coins"></i> ${fmtMoney(cur.turnover)} dövriyyə</div>`;
-      } else if (tiers.length) {
-        const firstRate = Number(tiers[0].rate);
-        feeCell = nameLine
-          + `<div style="font-size:10px;color:#94a3b8;margin-top:1px">${firstRate}% · tier 1/${tiers.length}</div>`
-          + `<div style="font-size:10px;color:#94a3b8;margin-top:1px">Paket başlanğıcı yoxdur</div>`;
-      } else {
-        feeCell = nameLine + `<div style="font-size:10px;color:#94a3b8">—</div>`;
+      const config=fp.tiers||{};
+      const dflt=config.default||{};
+      const rulesCount=(config.rules||[]).length;
+      const cur=currentApplicableTier(p.id);
+      const nameLine=`<div style="font-size:11px;font-weight:600;color:#1565c0">${fp.name.length>22?fp.name.slice(0,22)+'…':fp.name}</div>`;
+      if(cur){
+        feeCell=nameLine
+          +`<div style="font-size:10px;color:#64748b;margin-top:1px"><strong style="color:#1565c0">${dflt.pct||0}%</strong> standart · ${rulesCount} qayda</div>`;
+      }else{
+        feeCell=nameLine
+          +`<div style="font-size:10px;color:#94a3b8;margin-top:1px">${dflt.pct||0}% · ${rulesCount} qayda</div>`
+          +`<div style="font-size:10px;color:#94a3b8;margin-top:1px">Paket başlanğıcı yoxdur</div>`;
       }
     }else if(p.status==='active'){
       feeCell=`<span style="color:#e53935;font-size:11px"><i class="fa-solid fa-circle-exclamation"></i> Paket yoxdur</span>`;
@@ -1834,7 +2082,6 @@ function renderPartnersPage(){
       <td class="r">${ac}/${tc}</td>
       <td class="r">${fmtN(s.issued||0)}</td>
       <td>${s.size>0?ubar(s.pct||0):'<span style="color:#94a3b8">—</span>'}</td>
-      <td class="r">${p.status==='active'?`<strong>${fmtMoney(s.vol||0)}</strong>`:'<span style="color:#94a3b8">—</span>'}</td>
       <td>${feeCell}</td>
       <td>
         <button class="btn btn-primary btn-sm" onclick="openDetailModal(${p.id})">
@@ -2000,7 +2247,7 @@ async function openDetailModal(pid){
       <span style="font-weight:400;color:#94a3b8;font-size:10px;text-transform:none;margin-left:6px">(${fps.length} paket)</span>
     </div>
     ${fps.length?fps.map(fp=>{
-      const tiers=fp.tiers||[];
+      const config=fp.tiers||{};
       return`<div class="fp-card">
         <div class="fp-card-hdr">
           <div>
@@ -2017,13 +2264,16 @@ async function openDetailModal(pid){
             </button>
           </div>
         </div>
-        <table class="tiers-tbl">
-          <thead><tr><th>Həcm aralığı (₼)</th><th>Komisyon dərəcəsi</th></tr></thead>
-          <tbody>${tiers.map((t,i)=>`<tr>
-            <td>${fmtN(t.from)} ₼ — ${t.to===null||t.to===undefined?'Limitsiz':fmtN(t.to)+' ₼'}</td>
-            <td><strong style="color:#1565c0">${t.rate}%</strong></td>
-          </tr>`).join('')}</tbody>
-        </table>
+        <div style="font-size:12px;color:#334155;margin-top:6px">
+          <div style="margin-bottom:5px"><i class="fa-solid fa-star" style="color:#f57c00;font-size:10px"></i> <strong>Standart:</strong> ${(config.default||{}).pct||0}% / min ${fmtMoney((config.default||{}).min_amt||0)}</div>
+          ${(config.rules||[]).length===0?'<span style="color:#94a3b8;font-size:11px">Xüsusi qayda yoxdur</span>'
+            :(config.rules||[]).map(rule=>`<div style="margin-bottom:3px;color:#64748b;font-size:11px">
+            <i class="fa-solid fa-chevron-right" style="color:#1565c0;font-size:9px"></i>
+            <strong style="color:#334155">${rule.label||'Qayda'}</strong>: ${rule.pct||0}% / min ${fmtMoney(rule.min_amt||0)}
+            <span style="color:#94a3b8">[${[rule.filters?.op_type,rule.filters?.geo,rule.filters?.mcc_group].filter(Boolean).join(', ')||'Hamısı'}]</span>
+            ${rule.turnover_trigger?`<span style="color:#2e7d32;font-size:10px"> · ${rule.turnover_trigger.period==='monthly'?'Aylıq':'İllik'} ≥${fmtMoney(rule.turnover_trigger.threshold)}</span>`:''}
+          </div>`).join('')}
+        </div>
       </div>`;
     }).join(''):`<div style="color:#94a3b8;font-size:12px;padding:8px 0">Hələ komisyon paketi əlavə edilməyib.</div>`}
     <button class="btn btn-outline btn-sm" style="margin-top:4px" onclick="openFeePackageForm(null,${pid})">
@@ -2035,17 +2285,7 @@ async function openDetailModal(pid){
         <i class="fa-solid fa-calculator"></i> Komisyon Kalkulyatoru
         <span style="font-weight:400;color:#1565c0;font-size:10px;margin-left:6px">— Aktiv paketi əsas götürür</span>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <input type="number" id="calcVol-${pid}" min="0" step="1000"
-          style="border:1.5px solid #90caf9;border-radius:7px;padding:7px 10px;font-size:13px;width:200px;outline:none;font-family:inherit;background:#fff"
-          placeholder="Əməliyyat həcmi (₼)"
-          oninput="calcFeeResult(${pid})"
-          value="${s.vol>0?s.vol:''}">
-        <div id="calcResult-${pid}" style="font-size:13px;font-weight:600;color:#1565c0"></div>
-      </div>
-      ${s.vol>0?`<div style="font-size:11px;color:#64748b;margin-top:6px">
-        <i class="fa-solid fa-circle-info"></i> 30g əməliyyat həcminə (${fmtMoney(s.vol)}) görə hesablanmış dəyər avto-dolduruldu
-      </div>`:''}
+      <div id="calcResult-${pid}" style="font-size:13px;font-weight:600;color:#1565c0"></div>
     </div>`:''}
     `;
 
@@ -2195,7 +2435,7 @@ async function openDetailModal(pid){
   // Populate doc list asynchronously (needs signed URLs from Supabase Storage)
   refreshDocList(pid);
   // Auto-calculate if 30d volume is available
-  if(s.vol>0) setTimeout(()=>calcFeeResult(pid),50);
+  setTimeout(()=>calcFeeResult(pid),50);
 }
 
 function goTxn(pid){
@@ -2339,17 +2579,24 @@ function applyFilters(){
   if(!ctRows.length) cHtml+=`<tr><td colspan="4" style="color:#94a3b8;text-align:center;padding:14px">Məlumat yoxdur</td></tr>`;
   document.getElementById('countryTable').innerHTML=cHtml+'</tbody>';
 
-  // Per-partner
-  const sum=buildSummary();
-  const partTotal=Object.values(sum).reduce((s,p)=>s+p.vol,0)||1;
-  const sorted=[...PARTNERS].sort((a,b)=>(sum[b.id]?.vol||0)-(sum[a.id]?.vol||0));
+  // Per-partner — aggregate from filteredTxns so it respects all active filters
+  const partnerAgg={};
+  filteredTxns.forEach(t=>{
+    const ppid=PROD_TYPE_MAP[t.prod_type];
+    if(!ppid) return;
+    if(!partnerAgg[ppid]) partnerAgg[ppid]={cnt:0,vol:0};
+    partnerAgg[ppid].cnt++;
+    partnerAgg[ppid].vol+=t.amt;
+  });
+  const partTotal=Object.values(partnerAgg).reduce((s,p)=>s+p.vol,0)||1;
+  const sorted=[...PARTNERS].sort((a,b)=>(partnerAgg[b.id]?.vol||0)-(partnerAgg[a.id]?.vol||0));
   let ptHtml=`<thead><tr><th>Tərəfdaş</th><th class="r">Əməliyyat Sayı</th>
     <th class="r">Həcm</th><th class="r">Ort. Məbləğ</th>
     <th style="min-width:140px">Ümumi Payı</th><th>WoW Trend</th>
   </tr></thead><tbody>`;
   sorted.forEach(p=>{
     if(pid&&p.id!==pid)return;
-    const s=sum[p.id]||{};const v=(s.vol||0)*rate;
+    const s=partnerAgg[p.id]||{};const v=(s.vol||0)*rate;
     const cnt=s.cnt||0;const avg=cnt>0?v/cnt:0;
     const share=((s.vol||0)/partTotal*100).toFixed(1);
     ptHtml+=`<tr>
@@ -2777,63 +3024,223 @@ function openFeePackageForm(fpId=null, pid){
     if(!fp)return;
     setV('fpf_name',fp.name); setV('fpf_status',fp.status);
     setV('fpf_from',fp.effective_from); setV('fpf_to',fp.effective_to);
-    renderFpTiers(fp.tiers||[]);
+    const cfg=fp.tiers||{};
+    document.getElementById('fpf_default_pct').value=(cfg.default||{}).pct??'';
+    document.getElementById('fpf_default_min').value=(cfg.default||{}).min_amt??'';
+    renderFpRules(cfg.rules||[]);
   }else{
     ['fpf_name','fpf_from','fpf_to'].forEach(id=>setV(id,''));
     setV('fpf_status','active');
-    renderFpTiers([{from:0,to:'',rate:''}]);
+    document.getElementById('fpf_default_pct').value='';
+    document.getElementById('fpf_default_min').value='';
+    renderFpRules([]);
   }
   openModal('feePackageFormModal');
 }
 
-function renderFpTiers(tiers){
-  const tbody=document.getElementById('fpTiersBody');
-  tbody.innerHTML='';
-  tiers.forEach((t,i)=>addFpTierRow(t,i));
-}
+let _fpRuleCounter = 0;
 
-function addFpTierRow(t={},idx=null){
-  const tbody=document.getElementById('fpTiersBody');
-  const i=idx!==null?idx:tbody.rows.length;
-  const tr=document.createElement('tr');
-  const fromVal = t.from!==undefined&&t.from!==null ? t.from : '';
-  const toVal   = t.to!==undefined&&t.to!==null ? t.to : '';
-  const rateVal = t.rate!==undefined ? t.rate : '';
-  tr.innerHTML=`
-    <td><input class="tier-inp" type="number" min="0" step="1" value="${fromVal}"
-         id="tier_from_${i}" placeholder="0" oninput="updateNextTierFrom(${i})"></td>
-    <td><input class="tier-inp" type="number" min="0" step="1" value="${toVal}"
-         id="tier_to_${i}" placeholder="limitsiz" oninput="updateNextTierFrom(${i})"></td>
-    <td><input class="tier-inp" type="number" min="0" max="100" step="0.01" value="${rateVal}"
-         id="tier_rate_${i}" placeholder="0.00"></td>
-    <td><button class="btn btn-danger btn-sm" onclick="removeFpTierRow(this)">
-      <i class="fa-solid fa-xmark"></i></button></td>`;
-  tbody.appendChild(tr);
-}
-
-function updateNextTierFrom(i){
-  const toEl=document.getElementById(`tier_to_${i}`);
-  const nextFromEl=document.getElementById(`tier_from_${i+1}`);
-  if(toEl&&nextFromEl&&toEl.value){
-    nextFromEl.value=Number(toEl.value)+1;
+// ── MCC tag-input helpers ────────────────────────────────────────────
+function initMccTagInput(wrap, initialCodes){
+  const tagInput = wrap.querySelector('.mcc-tag-input');
+  const search   = wrap.querySelector('.mcc-search');
+  const dropdown = wrap.querySelector('.mcc-dropdown');
+  // Pre-populate existing codes as tags
+  if(initialCodes){
+    initialCodes.split(',').map(s=>s.trim()).filter(Boolean).forEach(c=>_addMccTag(wrap,c));
   }
-}
-
-function removeFpTierRow(btn){
-  btn.closest('tr').remove();
-}
-
-function getFpTiers(){
-  const tbody=document.getElementById('fpTiersBody');
-  const tiers=[];
-  Array.from(tbody.rows).forEach(row=>{
-    const inputs=row.querySelectorAll('input');
-    const fromV=Number(inputs[0].value)||0;
-    const toV=inputs[1].value.trim()===''?null:Number(inputs[1].value);
-    const rateV=parseFloat(inputs[2].value)||0;
-    tiers.push({from:fromV,to:toV,rate:rateV});
+  let focusedIdx = -1;
+  search.addEventListener('input', ()=>{
+    const q=search.value.trim().toLowerCase();
+    focusedIdx=-1;
+    if(!q){dropdown.style.display='none';return;}
+    const matches=Object.entries(MCC_LABELS)
+      .filter(([code,name])=>code.startsWith(q)||name.toLowerCase().includes(q))
+      .slice(0,25);
+    if(!matches.length){dropdown.style.display='none';return;}
+    dropdown.innerHTML=matches.map(([code,name])=>
+      `<div class="mcc-option" onmousedown="event.preventDefault()" onclick="_selectMccOption(this,'${code}')">
+        <span class="mcc-opt-code">${code}</span>
+        <span class="mcc-opt-desc">${name}</span>
+      </div>`).join('');
+    dropdown.style.display='block';
   });
-  return tiers;
+  search.addEventListener('keydown', e=>{
+    const opts=dropdown.querySelectorAll('.mcc-option');
+    if(e.key==='ArrowDown'){e.preventDefault();focusedIdx=Math.min(focusedIdx+1,opts.length-1);opts.forEach((o,i)=>o.classList.toggle('focused',i===focusedIdx));opts[focusedIdx]?.scrollIntoView({block:'nearest'});return;}
+    if(e.key==='ArrowUp'){e.preventDefault();focusedIdx=Math.max(focusedIdx-1,0);opts.forEach((o,i)=>o.classList.toggle('focused',i===focusedIdx));opts[focusedIdx]?.scrollIntoView({block:'nearest'});return;}
+    if(e.key==='Enter'||e.key===','){
+      e.preventDefault();
+      if(focusedIdx>=0&&opts[focusedIdx]){
+        const code=opts[focusedIdx].querySelector('.mcc-opt-code').textContent;
+        _addMccTag(wrap,code);
+      }else if(search.value.trim()){
+        _addMccTag(wrap,search.value.replace(',','').trim());
+      }
+      search.value='';dropdown.style.display='none';focusedIdx=-1;return;
+    }
+    if(e.key==='Escape'){dropdown.style.display='none';return;}
+    if(e.key==='Backspace'&&!search.value){
+      const last=tagInput.querySelector('.mcc-tag:last-of-type');
+      if(last){last.remove();_updateMccHidden(wrap);}
+    }
+  });
+  search.addEventListener('blur',()=>setTimeout(()=>{dropdown.style.display='none';},150));
+}
+
+function _selectMccOption(el, code){
+  const wrap=el.closest('.mcc-tag-wrap');
+  _addMccTag(wrap,code);
+  wrap.querySelector('.mcc-search').value='';
+  wrap.querySelector('.mcc-dropdown').style.display='none';
+}
+
+function _addMccTag(wrap, code){
+  code=String(code).trim().toUpperCase();
+  if(!code)return;
+  const hidden=wrap.querySelector('input[type="hidden"]');
+  const existing=(hidden.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+  if(existing.map(c=>c.toUpperCase()).includes(code))return;
+  const search=wrap.querySelector('.mcc-search');
+  const tag=document.createElement('span');
+  tag.className='mcc-tag'; tag.dataset.code=code;
+  tag.innerHTML=`${code} <span class="mcc-tag-del" onclick="_removeMccTag(this)">×</span>`;
+  wrap.querySelector('.mcc-tag-input').insertBefore(tag,search);
+  _updateMccHidden(wrap);
+}
+
+function _removeMccTag(btn){
+  const wrap=btn.closest('.mcc-tag-wrap');
+  btn.closest('.mcc-tag').remove();
+  _updateMccHidden(wrap);
+}
+
+function _updateMccHidden(wrap){
+  const codes=Array.from(wrap.querySelectorAll('.mcc-tag')).map(t=>t.dataset.code);
+  wrap.querySelector('input[type="hidden"]').value=codes.join(',');
+}
+// ────────────────────────────────────────────────────────────────────
+
+function renderFpRules(rules){
+  const c=document.getElementById('fpRulesContainer');
+  if(!c) return;
+  c.innerHTML='';
+  (rules||[]).forEach(rule=>addFpRule(rule));
+}
+
+function addFpRule(rule=null){
+  _fpRuleCounter++;
+  const rid=rule?.id||('r'+_fpRuleCounter);
+  const hasTrigger=!!(rule?.turnover_trigger);
+  const f=rule?.filters||{};
+  const tr=rule?.turnover_trigger||{};
+  const opOpts=(sel)=>['','debet','credit'].map(o=>`<option value="${o}"${sel===o?'selected':''}>${o||'Hamısı (D+K)'}</option>`).join('');
+  const geoOpts=(sel)=>['','local','international'].map(o=>`<option value="${o}"${sel===o?'selected':''}>${o==='local'?'Lokal':o==='international'?'Beynəlxalq':'Hamısı (L+I)'}</option>`).join('');
+  const grpOpts=(sel)=>['','financial','payment'].map(o=>`<option value="${o}"${sel===o?'selected':''}>${o==='financial'?'Maliyyə (6010-6051)':o==='payment'?'Ödəniş (digər)':'Bütün MCC'}</option>`).join('');
+  const perOpts=(sel)=>['monthly','yearly'].map(o=>`<option value="${o}"${sel===o?'selected':''}>${o==='monthly'?'Aylıq':'İllik'}</option>`).join('');
+  const div=document.createElement('div');
+  div.className='fp-rule-card';
+  div.dataset.ruleid=rid;
+  div.innerHTML=`
+    <div class="fp-rule-hdr">
+      <input class="fp-rule-label" type="text" placeholder="Qayda adı" value="${(rule?.label||'').replace(/"/g,'&quot;')}">
+      <button class="btn btn-danger btn-sm" onclick="this.closest('.fp-rule-card').remove()">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="fp-rule-row">
+      <span style="font-size:11px;color:#64748b;font-weight:600;min-width:55px">Filtr:</span>
+      <select class="fp-rule-sel" name="op_type" title="Əməliyyat növü">${opOpts(f.op_type||'')}</select>
+      <select class="fp-rule-sel" name="geo" title="Coğrafiya">${geoOpts(f.geo||'')}</select>
+      <select class="fp-rule-sel" name="mcc_group" title="MCC Qrup">${grpOpts(f.mcc_group||'')}</select>
+      <div class="mcc-tag-wrap" style="flex:1;min-width:160px">
+        <div class="mcc-tag-input">
+          <input class="mcc-search" type="text" placeholder="MCC axtar…">
+          <div class="mcc-dropdown"></div>
+        </div>
+        <input type="hidden" name="mcc_codes" value="">
+      </div>
+    </div>
+    <div class="fp-rule-row">
+      <span style="font-size:11px;color:#64748b;font-weight:600;min-width:55px">Komisyon:</span>
+      <input class="fp-rule-inp" type="number" name="pct" min="0" max="100" step="0.01" placeholder="%" value="${rule?.pct??''}">
+      <span style="font-size:12px;color:#64748b">%  &nbsp;min</span>
+      <input class="fp-rule-inp" type="number" name="min_amt" min="0" step="0.01" placeholder="0.00" value="${rule?.min_amt??''}">
+      <span style="font-size:12px;color:#64748b">₼</span>
+    </div>
+    <div style="margin-top:4px">
+      <label style="font-size:11px;color:#64748b;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+        <input type="checkbox" name="has_trigger" ${hasTrigger?'checked':''} onchange="toggleFpTrigger(this)">
+        Dövriyyə həddindən asılı
+      </label>
+    </div>
+    <div class="fp-trigger-box" style="display:${hasTrigger?'block':'none'}">
+      <div class="fp-trigger-lbl"><i class="fa-solid fa-bolt"></i> Dövriyyə Meyarı</div>
+      <div class="fp-rule-row">
+        <span style="font-size:11px;color:#2e7d32;min-width:55px">Dövr:</span>
+        <select class="fp-rule-sel" name="trigger_period">${perOpts(tr.period||'monthly')}</select>
+      </div>
+      <div class="fp-rule-row">
+        <span style="font-size:11px;color:#2e7d32;min-width:55px">Filtr:</span>
+        <select class="fp-rule-sel" name="trigger_filter_op_type">${opOpts(tr.filter_op_type||'')}</select>
+        <select class="fp-rule-sel" name="trigger_filter_geo">${geoOpts(tr.filter_geo||'')}</select>
+        <select class="fp-rule-sel" name="trigger_filter_mcc_group">${grpOpts(tr.filter_mcc_group||'')}</select>
+        <div class="mcc-tag-wrap" style="flex:1;min-width:130px">
+          <div class="mcc-tag-input">
+            <input class="mcc-search" type="text" placeholder="MCC axtar…">
+            <div class="mcc-dropdown"></div>
+          </div>
+          <input type="hidden" name="trigger_filter_mcc_codes" value="">
+        </div>
+      </div>
+      <div class="fp-rule-row">
+        <span style="font-size:11px;color:#2e7d32;min-width:55px">Hədd (₼):</span>
+        <input class="fp-rule-inp" type="number" name="trigger_threshold" min="0" step="1000" placeholder="1000000" value="${tr.threshold??''}">
+      </div>
+    </div>
+  `;
+  document.getElementById('fpRulesContainer').appendChild(div);
+  // Init MCC tag inputs after DOM insertion
+  const wraps=div.querySelectorAll('.mcc-tag-wrap');
+  initMccTagInput(wraps[0], f.mcc_codes||'');
+  if(wraps[1]) initMccTagInput(wraps[1], tr.filter_mcc_codes||'');
+}
+
+function toggleFpTrigger(cb){
+  cb.closest('.fp-rule-card').querySelector('.fp-trigger-box').style.display=cb.checked?'block':'none';
+}
+
+function getFpConfig(){
+  const pct=parseFloat(document.getElementById('fpf_default_pct').value)||0;
+  const min_amt=parseFloat(document.getElementById('fpf_default_min').value)||0;
+  const rules=[];
+  document.querySelectorAll('#fpRulesContainer .fp-rule-card').forEach((card,i)=>{
+    const gv=n=>(card.querySelector(`[name="${n}"]`)?.value||'').trim();
+    const hasTrigger=card.querySelector('[name="has_trigger"]')?.checked;
+    let turnover_trigger=null;
+    if(hasTrigger){
+      turnover_trigger={
+        period:gv('trigger_period')||'monthly',
+        filter_op_type:gv('trigger_filter_op_type'),
+        filter_geo:gv('trigger_filter_geo'),
+        filter_mcc_group:gv('trigger_filter_mcc_group'),
+        filter_mcc_codes:gv('trigger_filter_mcc_codes'),
+        threshold:parseFloat(gv('trigger_threshold'))||0,
+      };
+    }
+    rules.push({
+      id:'r'+(i+1),
+      label:card.querySelector('.fp-rule-label')?.value||('Qayda '+(i+1)),
+      filters:{
+        op_type:gv('op_type'),geo:gv('geo'),
+        mcc_group:gv('mcc_group'),mcc_codes:gv('mcc_codes'),
+      },
+      pct:parseFloat(gv('pct'))||0,
+      min_amt:parseFloat(gv('min_amt'))||0,
+      turnover_trigger,
+    });
+  });
+  return{default:{pct,min_amt},rules};
 }
 
 async function saveFeePackage(){
@@ -2843,8 +3250,8 @@ async function saveFeePackage(){
   const fpId=document.getElementById('fpf_id').value;
   const pid=Number(document.getElementById('fpf_pid').value);
   if(!name){showToast('Paket adı məcburidir!',false);return;}
-  const tiers=getFpTiers();
-  if(!tiers.length){showToast('Minimum bir tier əlavə edin!',false);return;}
+  const tiers=getFpConfig();
+  if(!tiers.default){showToast('Standart komisyon lazımdır!',false);return;}
   const fields={partner_id:pid,name,status,effective_from,effective_to,tiers};
   try{
     if(fpId){
@@ -2880,22 +3287,30 @@ async function deleteFeePackage(fpId,pid){
 }
 
 function calcFeeResult(pid){
-  const volEl=document.getElementById(`calcVol-${pid}`);
   const resEl=document.getElementById(`calcResult-${pid}`);
-  if(!volEl||!resEl)return;
-  const vol=parseFloat(volEl.value)||0;
-  if(!vol){resEl.textContent='';return;}
+  if(!resEl) return;
   const fps=(FEE_PACKAGES[pid]||[]).filter(fp=>fp.status==='active');
   if(!fps.length){resEl.innerHTML='<span style="color:#e53935">Aktiv paket yoxdur</span>';return;}
-  const fp=fps[0];
-  const{rate,commission,tier}=calcCommission(fp.tiers,vol);
-  const tierLabel=tier?(fmtN(tier.from)+'–'+(tier.to===null||tier.to===undefined?'∞':fmtN(tier.to))+' ₼ → '+rate+'%'):(rate+'%');
-  resEl.innerHTML=`<span style="background:#e3f2fd;border:1px solid #90caf9;border-radius:6px;padding:4px 10px;display:inline-flex;align-items:center;gap:6px">
-    <i class="fa-solid fa-tag" style="color:#1565c0"></i>
-    Tier: <strong>${tierLabel}</strong>
-    &nbsp;·&nbsp;
-    <i class="fa-solid fa-coins" style="color:#6a1b9a"></i>
-    Komisyon: <strong style="color:#6a1b9a">${fmtMoney(commission)}</strong>
+  const config=fps[0].tiers;
+  if(!config){resEl.textContent='';return;}
+  const pTxns=TRANSACTIONS.filter(t=>PROD_TYPE_MAP[t.prod_type]===pid);
+  if(!pTxns.length){
+    const dflt=config.default||{};
+    resEl.innerHTML=`<span style="color:#94a3b8;font-size:12px">Əməliyyat yoxdur · Standart: ${dflt.pct||0}% / min ${fmtMoney(dflt.min_amt||0)}</span>`;
+    return;
+  }
+  const vol=pTxns.reduce((s,t)=>s+t.amt,0);
+  const{commission,rate}=calcEstimatedCommission(config,pTxns);
+  const dflt=config.default||{};
+  const rulesCount=(config.rules||[]).length;
+  resEl.innerHTML=`<span style="background:#e3f2fd;border:1px solid #90caf9;border-radius:6px;padding:6px 12px;display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <i class="fa-solid fa-calculator" style="color:#1565c0"></i>
+    <span><strong>${fmtMoney(vol)}</strong> həcm</span>
+    <span>·</span>
+    <span><strong style="color:#1565c0">${dflt.pct||0}%</strong> standart${rulesCount?' + '+rulesCount+' qayda':''}</span>
+    <span>·</span>
+    <strong style="color:#6a1b9a">${fmtMoney(commission)}</strong>
+    <span style="color:#94a3b8;font-size:11px">(${rate.toFixed(3)}% effektiv)</span>
   </span>`;
 }
 
@@ -3039,9 +3454,8 @@ async function generateDocx(pid, type){
 
 // ═══════════════════════ REFRESH ALL
 function refreshAll(){
-  renderDashboard();
+  renderDashboard();    // charts are rebuilt inside renderDashboard
   renderPartnersPage();
-  initDonutChart();
   initTxnFilters();
   applyFilters();
   if(currentRole==='administrator') { renderUsersPage(); renderProductsPage(); }
@@ -3215,9 +3629,7 @@ async function discoverProdTypes() {
 async function initApp(){
   showSyncBadge(sbOn()?'Yüklənir…':'Demo rejim','#f57c00');
   await loadData();      // fetch from Supabase (or no-op if not configured)
-  initTrendChart();
-  initDonutChart();
-  renderDashboard();
+  renderDashboard();     // charts are rebuilt inside renderDashboard
   renderPartnersPage();
   initTxnFilters();
   applyFilters();
