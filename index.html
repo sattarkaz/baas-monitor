@@ -524,6 +524,8 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
             <option value="D" selected>Debet</option>
             <option value="C">Kredit</option>
           </select></div>
+        <div class="fg"><label><i class="fa-solid fa-terminal"></i> Terminal</label>
+          <input type="text" id="fTerminal" placeholder="Terminal ID" style="width:100%"></div>
         <div class="fg"><label>&nbsp;</label>
           <button class="btn btn-primary" onclick="applyFilters()"><i class="fa-solid fa-filter"></i> Tətbiq et</button></div>
         <div class="fg"><label>&nbsp;</label>
@@ -642,6 +644,13 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
             </select>
           </div>
         </div>
+      </div>
+
+      <!-- Bulk delete bar -->
+      <div id="invBulkBar" style="display:none;background:#fce4ec;border:1px solid #f48fb1;border-radius:8px;padding:10px 16px;margin-bottom:12px;display:none;align-items:center;gap:12px">
+        <span id="invBulkCount" style="font-size:13px;font-weight:600;color:#c62828"></span>
+        <button class="btn btn-danger btn-sm" onclick="bulkDeleteInvoices()"><i class="fa-solid fa-trash"></i> Seçilənləri Sil</button>
+        <button class="btn btn-outline btn-sm" onclick="toggleAllInvCbs(false)">Seçimi Ləğv Et</button>
       </div>
 
       <!-- Invoice table -->
@@ -864,28 +873,38 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
         </label>
       </div>
       <div id="upf_mf_section" style="display:none;margin-top:8px">
-        <div class="form-grid form-grid-2">
-          <div class="form-field">
-            <label>Aylıq Məbləğ (₼) <span class="req">*</span></label>
-            <input type="number" id="upf_mf_amount" min="0" step="0.01" placeholder="məs. 500">
-          </div>
-          <div class="form-field">
-            <label>Limit Növü</label>
-            <select id="upf_mf_cap_type" onchange="toggleUpfMfCap(this)">
-              <option value="">Limitsiz</option>
-              <option value="cards">Kart Sayı</option>
-              <option value="turnover_monthly">Aylıq Dövriyyə</option>
-              <option value="turnover_yearly">İllik Dövriyyə</option>
-            </select>
-          </div>
-          <div class="form-field" id="upf_mf_cap_wrap" style="display:none;grid-column:1/-1">
-            <label id="upf_mf_cap_lbl">Limit Dəyəri <span class="req">*</span></label>
-            <input type="number" id="upf_mf_cap_value" min="0" step="1" placeholder="məs. 5000">
-            <div id="upf_mf_cap_hint" style="font-size:11px;color:#64748b;margin-top:3px"></div>
-          </div>
+        <div class="form-field" style="margin-bottom:10px">
+          <label>Aylıq Məbləğ (₼) <span class="req">*</span></label>
+          <input type="number" id="upf_mf_amount" min="0" step="0.01" placeholder="məs. 500" style="max-width:200px">
         </div>
-        <div style="background:#fff8e1;border-radius:8px;padding:10px 13px;font-size:11px;color:#7b5800;margin-top:4px">
-          <i class="fa-solid fa-circle-info"></i> Limit: müəyyən həddə çatıldıqda həmin ay üçün aylıq ödəniş tutulmur.
+        <!-- Multi-condition cap builder -->
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;margin-top:4px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:12px;font-weight:700;color:#334155"><i class="fa-solid fa-ban" style="color:#f57c00;font-size:11px"></i> Limit Şərtləri</span>
+            <button type="button" class="btn btn-outline btn-sm" onclick="addMfCapCondition()">
+              <i class="fa-solid fa-plus"></i> Şərt əlavə et
+            </button>
+          </div>
+          <div style="font-size:11px;color:#64748b;margin-bottom:10px">
+            Bu şərtlərdən hər hansı biri ödənildikdə (OR) və ya hamısı birlikdə (AND) aylıq ödəniş tutulmur.
+          </div>
+          <!-- Logic toggle — only shown when 2+ conditions -->
+          <div id="upf_cap_logic_row" style="display:none;align-items:center;gap:8px;margin-bottom:10px">
+            <span style="font-size:11px;color:#64748b;font-weight:600">Şərtlər arasında:</span>
+            <button type="button" id="upf_cap_btn_or" onclick="setCapLogic('or')"
+              style="padding:3px 10px;border-radius:6px;border:1.5px solid #1565c0;font-size:11px;font-weight:700;cursor:pointer;background:#1565c0;color:#fff">
+              VƏ YA (OR)
+            </button>
+            <button type="button" id="upf_cap_btn_and" onclick="setCapLogic('and')"
+              style="padding:3px 10px;border-radius:6px;border:1.5px solid #e2e8f0;font-size:11px;font-weight:700;cursor:pointer;background:#fff;color:#64748b">
+              VƏ (AND)
+            </button>
+          </div>
+          <!-- Condition rows rendered here -->
+          <div id="upf_cap_conditions"></div>
+          <div style="font-size:11px;color:#94a3b8;font-style:italic" id="upf_cap_empty_hint">
+            Heç bir şərt yoxdur — ödəniş hər zaman tutulur.
+          </div>
         </div>
       </div>
 
@@ -1274,12 +1293,6 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
 
 // ═══════════════════════ AUTH
 let currentRole = '';
-// Local fallback — used when Supabase is unavailable or not configured
-// Demo credentials (used when Supabase is not configured)
-const USERS = {
-  admin:{pass:'admin',name:'Demo Admin',role:'administrator',initials:'DA',roleLabel:'Administrator'},
-  manager:{pass:'manager',name:'Demo Manager',role:'manager',initials:'DM',roleLabel:'Partner Manager'},
-};
 
 // ═══════════════════════ SYSTEM USERS (user management page)
 let _nextUserId = 6;
@@ -1624,13 +1637,16 @@ function pkgFromDb(r){
   return{id:Number(r.id),pid:Number(r.partner_id),size:r.size,
     from:r.start_date,to:r.end_date,status:r.status,
     issued:r.issued||0,rem:r.rem||0,pct:parseFloat(r.pct)||0,notes:r.notes||'',
+    price_per_card:r.price_per_card!=null?parseFloat(r.price_per_card):null,
     monthly_fee:r.monthly_fee!=null?parseFloat(r.monthly_fee):null,
     monthly_fee_cap_type:r.monthly_fee_cap_type||null,
-    monthly_fee_cap_value:r.monthly_fee_cap_value!=null?parseFloat(r.monthly_fee_cap_value):null};
+    monthly_fee_cap_value:r.monthly_fee_cap_value!=null?parseFloat(r.monthly_fee_cap_value):null,
+    monthly_fee_cap:r.monthly_fee_cap||null};
 }
 function pkgToDb(pk){
   return{partner_id:pk.pid,size:pk.size,start_date:pk.from,end_date:pk.to,
     status:pk.status,issued:pk.issued,rem:pk.rem,pct:pk.pct,notes:pk.notes,
+    price_per_card:pk.price_per_card??null,
     monthly_fee:pk.monthly_fee??null,
     monthly_fee_cap_type:pk.monthly_fee_cap_type||null,
     monthly_fee_cap_value:pk.monthly_fee_cap_value??null};
@@ -1710,6 +1726,22 @@ function dealFromDb(r){
     contract_date:r.contract_date||'',
     notes:r.notes||''
   };
+}
+
+// ── Invoice + addendum DB helpers ──
+function _createInvoice(data){
+  const inv={id:_nextInvId++,...data};
+  INVOICES.push(inv);
+  if(sbOn()){
+    sb('POST','invoices',{
+      number:inv.number,partner_id:inv.partner_id,type:inv.type,
+      status:inv.status||'draft',issue_date:inv.issue_date||null,
+      due_date:inv.due_date||null,period_from:inv.period_from||null,
+      period_to:inv.period_to||null,notes:inv.notes||null,
+      line_items:inv.line_items||[],total:inv.total||0
+    }).catch(e=>console.warn('Invoice persist:',e.message));
+  }
+  return inv;
 }
 
 // ── Load all data from Supabase ──
@@ -1809,6 +1841,36 @@ async function loadData(){
     }catch(e){
       console.warn('transactions not found, run migration v6:', e.message);
     }
+
+    // invoices
+    try{
+      const invRows=await sb('GET','invoices',null,'?order=id')||[];
+      if(invRows.length){
+        INVOICES=invRows.map(r=>({
+          id:Number(r.id),number:r.number||'',partner_id:Number(r.partner_id),
+          type:r.type||'manual',status:r.status||'draft',
+          issue_date:r.issue_date||'',due_date:r.due_date||'',
+          period_from:r.period_from||null,period_to:r.period_to||null,
+          notes:r.notes||'',line_items:r.line_items||[],
+          total:parseFloat(r.total)||0,signed_doc:r.signed_doc||null
+        }));
+        _nextInvId=Math.max(...INVOICES.map(i=>i.id))+1;
+      }
+    }catch(e){console.warn('invoices table not found, run schema_migration.sql:',e.message);}
+
+    // addendums
+    try{
+      const addRows=await sb('GET','addendums',null,'?order=id')||[];
+      if(addRows.length){
+        ADDENDUMS=addRows.map(r=>({
+          id:Number(r.id),partner_id:Number(r.partner_id),
+          date:r.date||'',package_ids:r.package_ids||[],
+          fee_package_ids:r.fee_package_ids||[],card_terms:r.card_terms||{},
+          notes:r.notes||'',status:r.status||'created',created_at:r.created_at||''
+        }));
+        _nextAddendumId=Math.max(...ADDENDUMS.map(a=>a.id))+1;
+      }
+    }catch(e){console.warn('addendums table not found, run schema_migration.sql:',e.message);}
 
     showSyncBadge('Sinxronizasiya: OK','#2e7d32');
   }catch(e){
@@ -1932,18 +1994,11 @@ async function doLogin(){
         usr={pass:p,name,role,initials,roleLabel:roleLabels[role]||role};
       }
     }catch(e){
-      // Supabase unavailable — fall through to local USERS
-      console.warn('Supabase auth failed, trying local USERS:',e.message);
+      console.warn('Supabase auth error:',e.message);
     }
   }
 
-  // ── 2. Fallback: hardcoded USERS object ──────────────────────────────────
-  if(!usr){
-    const local=USERS[u];
-    if(local&&local.pass===p) usr=local;
-  }
-
-  // ── 3. Apply result ───────────────────────────────────────────────────────
+  // ── 2. Apply result ───────────────────────────────────────────────────────
   if(usr){
     currentRole=usr.role;
     document.getElementById('loginError').style.display='none';
@@ -2088,7 +2143,7 @@ function applyDashPeriod(){
 }
 function destroyChart(c){if(c){try{c.destroy()}catch(e){}}}
 
-function genDailyData(partnerId=0, fromISO=null, toISO=null, opTypeFilter=''){
+function genDailyData(partnerId=0, fromISO=null, toISO=null, opTypeFilter='', mccFilter='', terminalFilter=''){
   // Aggregate real transactions by day within the given date range.
   // partnerId=0 → all partners; otherwise filter via PROD_TYPE_MAP.
   // opTypeFilter: '' = all, 'D' = debet only, 'C' = kredit only
@@ -2121,6 +2176,8 @@ function genDailyData(partnerId=0, fromISO=null, toISO=null, opTypeFilter=''){
     }
     if(opTypeFilter==='D' && isCreditOp(t.op_type)) return;
     if(opTypeFilter==='C' && !isCreditOp(t.op_type)) return;
+    if(mccFilter && t.mcc !== mccFilter) return;
+    if(terminalFilter && t.terminal_id !== terminalFilter) return;
     buckets[t.op_date].vol += t.amt;
     buckets[t.op_date].cnt += 1;
   });
@@ -2224,10 +2281,10 @@ function initDonutChart(fromISO, toISO){
   }).join('');
 }
 
-function renderBarChart(partnerId,currency,fromISO=null,toISO=null,opTypeFilter=''){
+function renderBarChart(partnerId,currency,fromISO=null,toISO=null,opTypeFilter='',mccFilter='',terminalFilter=''){
   const sym=SYMBOLS[currency]||'₼';
   const rate=RATES[currency]||1;
-  const daily=genDailyData(partnerId||0,fromISO,toISO,opTypeFilter);
+  const daily=genDailyData(partnerId||0,fromISO,toISO,opTypeFilter,mccFilter,terminalFilter);
   destroyChart(barChart);
   barChart=new Chart(document.getElementById('barChart').getContext('2d'),{
     type:'bar',
@@ -2795,9 +2852,12 @@ function openUnifiedPackageForm(pid, pkgId=null, fpId=null){
   document.getElementById('upf_mf_on').checked=mfOn;
   document.getElementById('upf_mf_section').style.display=mfOn?'block':'none';
   document.getElementById('upf_mf_amount').value=existPkg&&existPkg.monthly_fee!=null?existPkg.monthly_fee:'';
-  document.getElementById('upf_mf_cap_type').value=existPkg&&existPkg.monthly_fee_cap_type?existPkg.monthly_fee_cap_type:'';
-  document.getElementById('upf_mf_cap_value').value=existPkg&&existPkg.monthly_fee_cap_value!=null?existPkg.monthly_fee_cap_value:'';
-  document.getElementById('upf_mf_cap_wrap').style.display=(existPkg&&existPkg.monthly_fee_cap_type)?'grid':'none';
+  // Build cap from new monthly_fee_cap JSONB, or fall back to old single-field for legacy pkgs
+  let _existCap = existPkg?.monthly_fee_cap || null;
+  if(!_existCap && existPkg?.monthly_fee_cap_type){
+    _existCap = {logic:'or', conditions:[{type:existPkg.monthly_fee_cap_type, value:existPkg.monthly_fee_cap_value||0}]};
+  }
+  renderMfCapUI(_existCap);
 
   // Pre-fill commission section from existing fp (if fpId given, or try to match by date range)
   let existFp=null;
@@ -2833,6 +2893,82 @@ function openUnifiedPackageForm(pid, pkgId=null, fpId=null){
 function toggleUpfMonthlyFee(cb){
   document.getElementById('upf_mf_section').style.display=cb.checked?'block':'none';
 }
+
+// ── Monthly fee cap: multi-condition builder ──
+let _capLogic = 'or';
+
+function setCapLogic(logic){
+  _capLogic = logic;
+  const orBtn  = document.getElementById('upf_cap_btn_or');
+  const andBtn = document.getElementById('upf_cap_btn_and');
+  if(!orBtn) return;
+  if(logic === 'or'){
+    orBtn.style.background='#1565c0'; orBtn.style.color='#fff'; orBtn.style.borderColor='#1565c0';
+    andBtn.style.background='#fff'; andBtn.style.color='#64748b'; andBtn.style.borderColor='#e2e8f0';
+  } else {
+    andBtn.style.background='#1565c0'; andBtn.style.color='#fff'; andBtn.style.borderColor='#1565c0';
+    orBtn.style.background='#fff'; orBtn.style.color='#64748b'; orBtn.style.borderColor='#e2e8f0';
+  }
+}
+
+function addMfCapCondition(type='cards', value=''){
+  const container = document.getElementById('upf_cap_conditions');
+  if(!container) return;
+  const row = document.createElement('div');
+  row.className = 'cap-cond-row';
+  row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:7px';
+  const typeLabels = {cards:'Kart Sayı', turnover_monthly:'Aylıq Dövriyyə (₼)', turnover_yearly:'İllik Dövriyyə (₼)'};
+  row.innerHTML = `
+    <select class="cap-cond-type" style="padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;color:#334155">
+      ${Object.entries(typeLabels).map(([k,v])=>`<option value="${k}"${k===type?' selected':''}>${v}</option>`).join('')}
+    </select>
+    <span style="font-size:12px;color:#64748b;font-weight:600">≥</span>
+    <input type="number" class="cap-cond-value" min="0" step="1" placeholder="dəyər"
+      value="${value}" style="width:130px;padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px">
+    <button type="button" class="btn btn-danger btn-sm"
+      onclick="this.closest('.cap-cond-row').remove();_updateCapUI()">
+      <i class="fa-solid fa-xmark"></i>
+    </button>`;
+  container.appendChild(row);
+  _updateCapUI();
+}
+
+function _updateCapUI(){
+  const rows = document.querySelectorAll('#upf_cap_conditions .cap-cond-row');
+  const logicRow = document.getElementById('upf_cap_logic_row');
+  const emptyHint = document.getElementById('upf_cap_empty_hint');
+  if(logicRow) logicRow.style.display = rows.length >= 2 ? 'flex' : 'none';
+  if(emptyHint) emptyHint.style.display = rows.length === 0 ? 'block' : 'none';
+}
+
+function getMfCapFromUI(){
+  const rows = document.querySelectorAll('#upf_cap_conditions .cap-cond-row');
+  if(!rows.length) return null;
+  const conditions = [];
+  rows.forEach(row => {
+    const type  = row.querySelector('.cap-cond-type')?.value || '';
+    const value = parseFloat(row.querySelector('.cap-cond-value')?.value) || 0;
+    if(type && value > 0) conditions.push({type, value});
+  });
+  if(!conditions.length) return null;
+  return { logic: _capLogic, conditions };
+}
+
+function renderMfCapUI(cap){
+  const container = document.getElementById('upf_cap_conditions');
+  if(!container) return;
+  container.innerHTML = '';
+  _capLogic = 'or';
+  if(!cap || !cap.conditions || !cap.conditions.length){
+    // Backward compat: old single-field cap
+    _updateCapUI();
+    return;
+  }
+  _capLogic = cap.logic || 'or';
+  setCapLogic(_capLogic);
+  cap.conditions.forEach(c => addMfCapCondition(c.type, c.value));
+}
+
 function toggleUpfMfCap(el){
   const wrap=document.getElementById('upf_mf_cap_wrap');
   const hint=document.getElementById('upf_mf_cap_hint');
@@ -2863,8 +2999,10 @@ async function saveUnifiedPackage(){
 
   const mfOn=document.getElementById('upf_mf_on').checked;
   const monthly_fee=mfOn?(parseFloat(document.getElementById('upf_mf_amount').value)||null):null;
-  const monthly_fee_cap_type=mfOn?(document.getElementById('upf_mf_cap_type').value||null):null;
-  const monthly_fee_cap_value=(mfOn&&monthly_fee_cap_type)?(parseFloat(document.getElementById('upf_mf_cap_value').value)||null):null;
+  const monthly_fee_cap=mfOn?getMfCapFromUI():null;
+  // Also populate legacy single-field for DB backward-compat
+  const monthly_fee_cap_type=monthly_fee_cap?.conditions?.length===1?monthly_fee_cap.conditions[0].type:null;
+  const monthly_fee_cap_value=monthly_fee_cap?.conditions?.length===1?monthly_fee_cap.conditions[0].value:null;
   if(mfOn&&!monthly_fee){showToast('Aylıq məbləği daxil edin!',false);return;}
 
   const tiers=fpName?getFpConfig():null;
@@ -2873,7 +3011,7 @@ async function saveUnifiedPackage(){
   // ── CARD PACKAGE ──
   if(size>0){
     const newPkg={pid,size,from,to,status:'active',issued:0,rem:size,pct:0,notes,
-      price_per_card:pricePerCard,monthly_fee,monthly_fee_cap_type,monthly_fee_cap_value};
+      price_per_card:pricePerCard,monthly_fee,monthly_fee_cap_type,monthly_fee_cap_value,monthly_fee_cap};
     try{
       if(pkgIdRaw){
         // edit
@@ -2888,16 +3026,6 @@ async function saveUnifiedPackage(){
         if(sbOn()){const rows=await sb('POST','packages',pkgToDb(newPkg));newId=Number(rows[0].id);}
         else{newId=_nextPkgId++;}
         PACKAGES.push({id:newId,...newPkg});
-        if(monthly_fee!=null){
-          const today=isoToday();
-          const due=new Date();due.setDate(due.getDate()+30);
-          const pkgLabel=`PKG-${String(newId).padStart(3,'0')}`;
-          INVOICES.push({id:_nextInvId++,number:_nextInvNumber(),partner_id:pid,type:'monthly',status:'draft',
-            issue_date:today,due_date:due.toISOString().slice(0,10),
-            notes:`${pkgLabel} üzrə aylıq xidmət haqqı`,
-            line_items:[{description_internal:`Aylıq xidmət haqqı — ${pkgLabel}`,description_legal:'Aylıq xidmət haqqı',amount:monthly_fee,source:'monthly_fee',ref_pkg_id:newId}],
-            total:monthly_fee});
-        }
         msgs.push('Kart paketi əlavə edildi');
       }
     }catch(e){showToast('Kart paketi xətası: '+e.message,false);return;}
@@ -2914,20 +3042,6 @@ async function saveUnifiedPackage(){
         if(sbOn()) await sb('PATCH','fee_packages',{name:fpName,status,effective_from:from,effective_to:to,tiers},`?id=eq.${fpId}`);
         const fp=(FEE_PACKAGES[pid]||[]).find(x=>x.id===fpId);
         if(fp) Object.assign(fp,{name:fpName,status,effective_from:from,effective_to:to,tiers});
-        // Create invoices for new one-time commissions
-        const otItems=tiers.one_time||[];
-        if(otItems.length){
-          const today2=isoToday();
-          const alreadyInvoiced=new Set(INVOICES.filter(i=>i.partner_id===pid&&i.type==='onetime'&&i.line_items?.some(li=>li.ref_fp_id===fpId)).flatMap(i=>i.line_items.map(li=>li.description_internal)));
-          const newOtItems=otItems.filter(ot=>!alreadyInvoiced.has(ot.name_internal));
-          newOtItems.forEach(ot=>{
-            const due2=new Date();
-            if(ot.date_payable_type==='days'&&ot.date_payable_days) due2.setDate(due2.getDate()+ot.date_payable_days);
-            else if(ot.date_payable_type==='exact'&&ot.date_payable_date){const d=new Date(ot.date_payable_date);if(!isNaN(d))due2.setTime(d.getTime());}
-            else due2.setDate(due2.getDate()+30);
-            INVOICES.push({id:_nextInvId++,number:_nextInvNumber(),partner_id:pid,type:'onetime',status:'draft',issue_date:today2,due_date:due2.toISOString().slice(0,10),notes:ot.name_internal||ot.name_legal||'Birdəfəlik komisyon',line_items:[{description_internal:ot.name_internal||ot.name_legal,description_legal:ot.name_legal||ot.name_internal,amount:ot.sum,source:'one_time',ref_fp_id:fpId}],total:ot.sum});
-          });
-        }
         msgs.push('Komisyon paketi yeniləndi');
       }else{
         // create
@@ -2936,17 +3050,6 @@ async function saveUnifiedPackage(){
         else{newFpId=_nextFpId++;}
         if(!FEE_PACKAGES[pid]) FEE_PACKAGES[pid]=[];
         FEE_PACKAGES[pid].push({id:newFpId,partner_id:pid,name:fpName,status,effective_from:from,effective_to:to,tiers});
-        const otItems2=tiers.one_time||[];
-        if(otItems2.length){
-          const today3=isoToday();
-          otItems2.forEach(ot=>{
-            const due3=new Date();
-            if(ot.date_payable_type==='days'&&ot.date_payable_days) due3.setDate(due3.getDate()+ot.date_payable_days);
-            else if(ot.date_payable_type==='exact'&&ot.date_payable_date){const d=new Date(ot.date_payable_date);if(!isNaN(d))due3.setTime(d.getTime());}
-            else due3.setDate(due3.getDate()+30);
-            INVOICES.push({id:_nextInvId++,number:_nextInvNumber(),partner_id:pid,type:'onetime',status:'draft',issue_date:today3,due_date:due3.toISOString().slice(0,10),notes:ot.name_internal||ot.name_legal||'Birdəfəlik komisyon',line_items:[{description_internal:ot.name_internal||ot.name_legal,description_legal:ot.name_legal||ot.name_internal,amount:ot.sum,source:'one_time',ref_fp_id:newFpId}],total:ot.sum});
-          });
-        }
         msgs.push('Komisyon paketi əlavə edildi');
       }
     }catch(e){showToast('Komisyon paketi xətası: '+e.message,false);return;}
@@ -3020,8 +3123,7 @@ async function savePackage(){
       const today=isoToday();
       const due=new Date(); due.setDate(due.getDate()+30);
       const pkgLabel=`PKG-${String(newId).padStart(3,'0')}`;
-      INVOICES.push({
-        id:_nextInvId++,
+      _createInvoice({
         number:_nextInvNumber(),
         partner_id:pid,
         type:'monthly',
@@ -3067,19 +3169,31 @@ async function openDetailModal(pid){
   const pkgRows=pkgs.map(pk=>{
     const {issued:pkIss,rem:pkRem,pct:pkPct}=getLivePackageStats(pk);
     const mfCapLabels={'cards':'kart','turnover_monthly':'aylıq dövr.','turnover_yearly':'illik dövr.'};
+    const _capDisplay=(cap,capType,capVal)=>{
+      if(cap&&cap.conditions&&cap.conditions.length){
+        const logic=cap.logic==='and'?'VƏ':'VƏ YA';
+        return cap.conditions.map((c,i)=>
+          `${i>0?`<span style="color:#f57c00;font-size:9px;font-weight:700"> ${logic} </span>`:''}` +
+          `<span style="font-size:10px;color:#94a3b8">${fmtN(c.value)} ${mfCapLabels[c.type]||''}</span>`
+        ).join('');
+      }
+      if(capType) return `<div style="font-size:10px;color:#94a3b8">limit: ${capVal?fmtN(capVal):''} ${mfCapLabels[capType]||''}</div>`;
+      return '';
+    };
     const mfCell=pk.monthly_fee!=null
       ? `<div style="font-size:12px;font-weight:600;color:#2e7d32">${fmtMoney(pk.monthly_fee)}<span style="font-weight:400;color:#64748b">/ay</span></div>
-         ${pk.monthly_fee_cap_type?`<div style="font-size:10px;color:#94a3b8">limit: ${pk.monthly_fee_cap_value?fmtN(pk.monthly_fee_cap_value):''} ${mfCapLabels[pk.monthly_fee_cap_type]||''}</div>`:''}`
+         <div>${_capDisplay(pk.monthly_fee_cap,pk.monthly_fee_cap_type,pk.monthly_fee_cap_value)}</div>`
       : `<span style="color:#94a3b8;font-size:11px">—</span>`;
-    return`<tr>
-      <td class="mono">PKG-${String(pk.id).padStart(3,'0')}</td>
-      <td style="font-size:11px">${fmtDate(pk.from)} – ${fmtDate(pk.to)}</td>
-      <td class="r">${fmtN(pk.size)}</td><td class="r">${fmtN(pkIss)}</td><td class="r">${fmtN(pkRem)}</td>
-      <td style="min-width:130px">${ubar(pkPct)}</td>
-      <td>${mfCell}</td>
-      <td>${badge(pk.status)}</td>
-      ${pk.notes?`<td style="font-size:11px;color:#64748b;max-width:160px">${pk.notes}</td>`:'<td></td>'}
-      <td style="white-space:nowrap">
+    return`<tr title="${pk.notes||''}">
+      <td class="mono" style="padding:6px 6px">PKG-${String(pk.id).padStart(3,'0')}</td>
+      <td style="font-size:11px;padding:6px 6px;white-space:nowrap">${fmtDate(pk.from)} – ${fmtDate(pk.to)}</td>
+      <td class="r" style="padding:6px 6px">${fmtN(pk.size)}</td>
+      <td class="r" style="padding:6px 6px">${fmtN(pkIss)}</td>
+      <td class="r" style="padding:6px 6px">${fmtN(pkRem)}</td>
+      <td style="min-width:80px;padding:6px 6px">${ubar(pkPct)}</td>
+      <td style="padding:6px 6px">${mfCell}</td>
+      <td style="padding:6px 6px">${badge(pk.status)}</td>
+      <td style="white-space:nowrap;padding:6px 4px">
         <button class="btn btn-warning btn-sm" onclick="openUnifiedPackageForm(${pid},${pk.id},null)" title="Düzəlt"><i class="fa-solid fa-pen"></i></button>
         <button class="btn btn-danger btn-sm" onclick="deletePackage(${pk.id},${pid})" title="Sil"><i class="fa-solid fa-trash"></i></button>
       </td>
@@ -3153,7 +3267,8 @@ async function openDetailModal(pid){
         <span style="font-weight:400;color:#1565c0;font-size:10px;margin-left:6px">— Aktiv paketi əsas götürür</span>
       </div>
       <div id="calcResult-${pid}" style="font-size:13px;font-weight:600;color:#1565c0"></div>
-    </div>`:''}
+    </div>
+    <div id="calcInline-${pid}" style="display:none;margin-top:10px;background:#f3e5f5;border-radius:10px;padding:16px"></div>`:''}
     `;
 
   const canExport = currentRole==='administrator'||currentRole==='manager'||currentRole==='analyst';
@@ -3165,7 +3280,7 @@ async function openDetailModal(pid){
       <button class="btn btn-outline" onclick="generateDocx(${pid},'contract')">
         <i class="fa-solid fa-file-contract" style="color:#1565c0"></i> Əsas Müqavilə
       </button>
-      <button class="btn btn-outline" onclick="generateDocx(${pid},'tariff')">
+      <button class="btn btn-outline" onclick="openAddendumWizard(${pid})">
         <i class="fa-solid fa-file-invoice" style="color:#2e7d32"></i> Tarif Əlavəsi
       </button>
       <button class="btn btn-outline" onclick="generateDocx(${pid},'nda')">
@@ -3249,20 +3364,22 @@ async function openDetailModal(pid){
         <div class="mini-tile mt-orange"><div class="val">${(s.pct||0).toFixed(1)}%</div><div class="lbl">Ort. İstifadə</div></div>
       </div>
       <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Kart Paketləri</div>
-      <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:14px">
+      <div style="overflow-x:auto;margin-bottom:14px">
+      <table style="width:100%;min-width:580px;border-collapse:collapse;font-size:13px">
         <thead><tr style="background:#f8fafc">
-          <th style="padding:7px 10px;text-align:left;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">ID</th>
-          <th style="padding:7px 10px;text-align:left;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Müddət</th>
-          <th style="padding:7px 10px;text-align:right;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Həcm</th>
-          <th style="padding:7px 10px;text-align:right;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Buraxılmış</th>
-          <th style="padding:7px 10px;text-align:right;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Qalan</th>
-          <th style="padding:7px 10px;min-width:120px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">İstifadə</th>
-          <th style="padding:7px 10px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Aylıq Ödəniş</th>
-          <th style="padding:7px 10px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Status</th>
-          <th style="padding:7px 10px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Qeyd</th>
+          <th style="padding:6px 6px;text-align:left;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap">ID</th>
+          <th style="padding:6px 6px;text-align:left;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap">Müddət</th>
+          <th style="padding:6px 6px;text-align:right;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap">Həcm</th>
+          <th style="padding:6px 6px;text-align:right;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap">Buraxılmış</th>
+          <th style="padding:6px 6px;text-align:right;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap">Qalan</th>
+          <th style="padding:6px 6px;min-width:80px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap">İstifadə</th>
+          <th style="padding:6px 6px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap">Aylıq Ödəniş</th>
+          <th style="padding:6px 6px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap">Status</th>
+          <th style="padding:6px 4px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0"></th>
         </tr></thead>
         <tbody>${pkgRows}</tbody>
       </table>
+      </div>
       ${feeSection}
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
         <button class="btn btn-primary btn-sm" onclick="openUnifiedPackageForm(${pid})">
@@ -3275,13 +3392,21 @@ async function openDetailModal(pid){
     <div id="tab-elave-${pid}" class="modal-tab-pane">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
         <div style="font-size:13px;font-weight:700;color:#334155"><i class="fa-solid fa-file-signature" style="color:#7b1fa2"></i> Tarif Əlavələri</div>
-        <button class="btn btn-primary btn-sm" onclick="openAddendumWizard(${pid})">
-          <i class="fa-solid fa-plus"></i> Yeni Əlavə
-        </button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-danger btn-sm" id="addBulkDelBtn-${pid}" style="display:none" onclick="bulkDeleteAddendums(${pid})">
+            <i class="fa-solid fa-trash"></i> Seçilənləri Sil
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="openAddendumWizard(${pid})">
+            <i class="fa-solid fa-plus"></i> Yeni Əlavə
+          </button>
+        </div>
       </div>
       ${addendums.length ? `
       <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead><tr style="background:#f8fafc">
+          <th style="padding:7px 10px;width:28px;border-bottom:1px solid #e2e8f0">
+            <input type="checkbox" id="addCbAll-${pid}" onchange="toggleAllAddendumCbs(${pid},this.checked)" style="accent-color:#7b1fa2">
+          </th>
           <th style="padding:7px 10px;text-align:left;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Kod</th>
           <th style="padding:7px 10px;text-align:left;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Tarix</th>
           <th style="padding:7px 10px;text-align:left;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Kart Paketləri</th>
@@ -3291,13 +3416,11 @@ async function openDetailModal(pid){
         </tr></thead>
         <tbody>
         ${addendums.map(a=>{
-          // Card packages + per-card price if set
           const pkgLabels=(a.package_ids||[]).map(pkgid=>{
             const lbl=`PKG-${String(pkgid).padStart(3,'0')}`;
             const price=a.card_terms?.[pkgid];
             return price!=null?`${lbl}<span style="color:#2e7d32;font-size:10px;margin-left:2px">(₼${price}/kart)</span>`:lbl;
           }).join('<br>');
-          // Fee packages
           const fpLabels=(a.fee_package_ids||[]).map(fpid=>{
             const fp=(FEE_PACKAGES[pid]||[]).find(f=>f.id===fpid);
             return fp?`<span style="color:#7b1fa2">${fp.name}</span>`:`FP-${fpid}`;
@@ -3306,6 +3429,10 @@ async function openDetailModal(pid){
             ?`<span style="background:#e8f5e9;color:#2e7d32;font-size:10px;font-weight:700;border-radius:99px;padding:2px 8px">İmzalı</span>`
             :`<span style="background:#e3f2fd;color:#1565c0;font-size:10px;font-weight:700;border-radius:99px;padding:2px 8px">Yaradılmış</span>`;
           return`<tr style="border-bottom:1px solid #f1f5f9">
+            <td style="padding:8px 10px">
+              <input type="checkbox" class="add-cb-${pid}" data-id="${a.id}"
+                onchange="updateAddBulkBtn(${pid})" style="accent-color:#7b1fa2">
+            </td>
             <td style="padding:8px 10px;font-family:monospace;font-weight:700;color:#7b1fa2">${addendumLabel(a.id)}</td>
             <td style="padding:8px 10px;white-space:nowrap">${fmtDate(a.date)}</td>
             <td style="padding:8px 10px;font-size:11px;color:#334155">${pkgLabels||'—'}</td>
@@ -3313,12 +3440,15 @@ async function openDetailModal(pid){
             <td style="padding:8px 10px">${addStatus}</td>
             <td style="padding:8px 10px">
               <div style="display:flex;gap:4px">
-                <button class="btn btn-outline btn-sm" title="Sənədi Yüklə (mock)" onclick="showToast('Şablon hazırlanır — tezliklə.')">
+                <button class="btn btn-outline btn-sm" title="Tarif Əlavəsini Yüklə" onclick="generateDocx(${pid},'annex',${a.id})">
                   <i class="fa-solid fa-download"></i>
                 </button>
-                ${a.status!=='signed'?`<button class="btn btn-success btn-sm" onclick="markAddendumSigned(${a.id},${pid})" title="İmzalandı kimi işarələ">
+                ${a.status!=='signed'?`<button class="btn btn-success btn-sm" onclick="signAddendum(${a.id},${pid})" title="İmzalandı kimi işarələ">
                   <i class="fa-solid fa-file-signature"></i>
                 </button>`:''}
+                <button class="btn btn-danger btn-sm" onclick="deleteAddendum(${a.id},${pid})" title="Sil">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
               </div>
             </td>
           </tr>`;
@@ -3364,7 +3494,10 @@ async function openDetailModal(pid){
             <td style="padding:7px 10px;font-size:11px">${fmtDate(inv.due_date)}</td>
             <td style="padding:7px 10px">${invBadge(inv.status)}</td>
             <td style="padding:7px 10px">
-              <button class="btn btn-outline btn-sm" onclick="openInvoiceDetail(${inv.id})"><i class="fa-solid fa-eye"></i></button>
+              <div style="display:flex;gap:4px">
+                <button class="btn btn-outline btn-sm" onclick="openInvoiceDetail(${inv.id})" title="Fakturanı Aç"><i class="fa-solid fa-eye"></i></button>
+                <button class="btn btn-outline btn-sm" onclick="generateDocx(${pid},'akt',${inv.id})" title="AKT Yüklə"><i class="fa-solid fa-file-invoice"></i></button>
+              </div>
             </td>
           </tr>`).join('')}
         </tbody>
@@ -3480,14 +3613,15 @@ function applyFilters(){
   const fromISO=document.getElementById('fFrom').value||null;
   const toISO=document.getElementById('fTo').value||null;
   const opTypeFilter=document.getElementById('fOpType').value;
+  const terminalFilter=document.getElementById('fTerminal')?.value||'';
   const sym='₼';const rate=1;
 
   const pObj=pid?PARTNERS.find(p=>p.id===pid):null;
   document.getElementById('barChartTitle').textContent=
     `Gündəlik Əməliyyat Həcmi — ${pObj?pObj.name:'Bütün Tərəfdaşlar'}`;
-  renderBarChart(pid,cur,fromISO,toISO,opTypeFilter);
+  renderBarChart(pid,cur,fromISO,toISO,opTypeFilter,mccFilter,terminalFilter);
 
-  const daily=genDailyData(pid||0,fromISO,toISO,opTypeFilter);
+  const daily=genDailyData(pid||0,fromISO,toISO,opTypeFilter,mccFilter,terminalFilter);
   const totalVol=daily.reduce((s,d)=>s+d.vol,0)*rate;
   const totalCnt=daily.reduce((s,d)=>s+d.cnt,0);
   const avgTkt=totalCnt>0?totalVol/totalCnt:0;
@@ -3761,6 +3895,7 @@ function resetFilters(){
   document.getElementById('fMcc').value='';
   document.getElementById('fCountry').value='';
   document.getElementById('fOpType').value='D';
+  const fTerm=document.getElementById('fTerminal'); if(fTerm) fTerm.value='';
   const to=new Date();to.setDate(to.getDate()-1);
   const from=new Date();from.setDate(from.getDate()-31);
   document.getElementById('fTo').value=to.toISOString().slice(0,10);
@@ -4321,6 +4456,7 @@ function addFpRule(rule=null){
       <select class="fp-rule-sel" name="op_type" title="Əməliyyat növü">${opOpts(f.op_type||'')}</select>
       <select class="fp-rule-sel" name="geo" title="Coğrafiya">${geoOpts(f.geo||'')}</select>
       <select class="fp-rule-sel" name="mcc_group" title="MCC Qrup">${grpOpts(f.mcc_group||'')}</select>
+      <input class="fp-rule-inp" type="text" name="terminal_id" placeholder="Terminal ID" title="Terminal ID" value="${(f.terminal_id||'').replace(/"/g,'&quot;')}" style="width:110px">
       <div class="mcc-tag-wrap" style="flex:1;min-width:160px">
         <div class="mcc-tag-input">
           <input class="mcc-search" type="text" placeholder="MCC axtar…">
@@ -4402,6 +4538,7 @@ function getFpConfig(){
       filters:{
         op_type:gv('op_type'),geo:gv('geo'),
         mcc_group:gv('mcc_group'),mcc_codes:gv('mcc_codes'),
+        terminal_id:gv('terminal_id'),
       },
       pct:parseFloat(gv('pct'))||0,
       min_amt:parseFloat(gv('min_amt'))||0,
@@ -4428,40 +4565,7 @@ async function saveFeePackage(){
       if(sbOn()) await sb('PATCH','fee_packages',{name,status,effective_from,effective_to,tiers},`?id=eq.${fpId}`);
       const fp=(FEE_PACKAGES[pid]||[]).find(x=>x.id===Number(fpId));
       if(fp) Object.assign(fp,{name,status,effective_from,effective_to,tiers});
-      // Create invoices for any NEW one-time commissions not yet invoiced for this fee package
-      const otItems=tiers.one_time||[];
-      if(otItems.length){
-        const today=isoToday();
-        // Find which name_internals already have an invoice tied to this fee package
-        const alreadyInvoiced=new Set(
-          INVOICES
-            .filter(i=>i.partner_id===pid&&i.type==='onetime'&&
-                       i.line_items?.some(li=>li.ref_fp_id===Number(fpId)))
-            .flatMap(i=>i.line_items.map(li=>li.description_internal))
-        );
-        const newOtItems=otItems.filter(ot=>!alreadyInvoiced.has(ot.name_internal));
-        if(newOtItems.length){
-          newOtItems.forEach(ot=>{
-            let dueDate=today;
-            if(ot.date_payable_type==='exact'&&ot.date_payable_date){dueDate=ot.date_payable_date;}
-            else if(ot.date_payable_type==='days'&&ot.date_payable_days!=null){
-              const d=new Date();d.setDate(d.getDate()+Number(ot.date_payable_days));
-              dueDate=d.toISOString().slice(0,10);
-            }
-            INVOICES.push({
-              id:_nextInvId++,number:_nextInvNumber(),
-              partner_id:pid,type:'onetime',status:'draft',
-              issue_date:today,due_date:dueDate,
-              notes:`${name} — ${ot.name_internal}`,
-              line_items:[{description_internal:ot.name_internal,
-                description_legal:ot.name_legal||ot.name_internal,
-                amount:ot.sum||0,source:'one_time',ref_fp_id:Number(fpId)}],
-              total:ot.sum||0,
-            });
-          });
-          showToast(`"${name}" yeniləndi. ${newOtItems.length} yeni faktura yaradıldı.`);
-        }else{showToast(`"${name}" yeniləndi.`);}
-      }else{showToast(`"${name}" yeniləndi.`);}
+      showToast(`"${name}" yeniləndi.`);
     }else{
       let newId;
       if(sbOn()){
@@ -4470,43 +4574,7 @@ async function saveFeePackage(){
       }else{newId=_nextFpId++;}
       if(!FEE_PACKAGES[pid]) FEE_PACKAGES[pid]=[];
       FEE_PACKAGES[pid].push({id:newId,...fields});
-      // Auto-create draft invoices for any one-time commissions
-      const otItems=tiers.one_time||[];
-      if(otItems.length){
-        const partner=PARTNERS.find(x=>x.id===pid);
-        const today=isoToday();
-        otItems.forEach(ot=>{
-          // Compute due date
-          let dueDate=today;
-          if(ot.date_payable_type==='exact'&&ot.date_payable_date){
-            dueDate=ot.date_payable_date;
-          }else if(ot.date_payable_type==='days'&&ot.date_payable_days!=null){
-            const d=new Date(); d.setDate(d.getDate()+ot.date_payable_days);
-            dueDate=d.toISOString().slice(0,10);
-          }
-          INVOICES.push({
-            id:_nextInvId++,
-            number:_nextInvNumber(),
-            partner_id:pid,
-            type:'onetime',
-            status:'draft',
-            issue_date:today,
-            due_date:dueDate,
-            notes:`${name} — ${ot.name_internal}`,
-            line_items:[{
-              description_internal:ot.name_internal,
-              description_legal:ot.name_legal||ot.name_internal,
-              amount:ot.sum||0,
-              source:'one_time',
-              ref_fp_id:newId,
-            }],
-            total:ot.sum||0,
-          });
-        });
-        showToast(`"${name}" əlavə edildi. ${otItems.length} faktura avtomatik yaradıldı.`);
-      }else{
-        showToast(`"${name}" əlavə edildi.`);
-      }
+      showToast(`"${name}" əlavə edildi.`);
     }
   }catch(e){showToast('Xəta: '+e.message,false);return;}
   closeModal('feePackageFormModal');
@@ -4525,14 +4593,64 @@ async function deleteFeePackage(fpId,pid){
 }
 
 async function deletePackage(pkgId,pid){
-  if(!confirm('Bu kart paketini silmək istəyirsiniz?\nBuna bağlı fakturaları da yoxlayın.'))return;
+  const pkgLabel = `PKG-${String(pkgId).padStart(3,'0')}`;
+
+  // ── Find linked records ───────────────────────────────────────────────────
+  const linkedInvoices  = INVOICES.filter(i =>
+    i.line_items?.some(li => li.ref_pkg_id === pkgId)
+  );
+  const linkedAddendums = ADDENDUMS.filter(a =>
+    (a.package_ids || []).includes(pkgId)
+  );
+
+  // ── Step 1: confirm deletion ──────────────────────────────────────────────
+  let msg = `"${pkgLabel}" paketini silmək istəyirsiniz?`;
+  if(linkedInvoices.length || linkedAddendums.length){
+    msg += '\n\nBağlı qeydlər:';
+    if(linkedInvoices.length)  msg += `\n  • ${linkedInvoices.length} faktura (${linkedInvoices.map(i=>i.number).join(', ')})`;
+    if(linkedAddendums.length) msg += `\n  • ${linkedAddendums.length} əlavə (${linkedAddendums.map(a=>addendumLabel(a.id)).join(', ')})`;
+  }
+  if(!confirm(msg)) return;
+
+  // ── Step 2: ask about linked records (only if any exist) ──────────────────
+  let deleteLinked = false;
+  if(linkedInvoices.length || linkedAddendums.length){
+    deleteLinked = confirm(
+      'Bağlı faktura və əlavələri də silmək istəyirsiniz?\n\n' +
+      'OK → Paketle birlikdə sil\n' +
+      'Ləğv et → Yalnız paketi sil'
+    );
+  }
+
+  // ── Delete linked records ─────────────────────────────────────────────────
+  if(deleteLinked){
+    for(const inv of linkedInvoices){
+      try{
+        if(sbOn()) await sb('DELETE','invoices',null,`?id=eq.${inv.id}`);
+        const ii=INVOICES.findIndex(i=>i.id===inv.id);
+        if(ii>=0) INVOICES.splice(ii,1);
+      }catch(e){console.warn('Invoice silmə xətası:',e.message);}
+    }
+    for(const add of linkedAddendums){
+      try{
+        if(sbOn()) await sb('DELETE','addendums',null,`?id=eq.${add.id}`);
+        const ai=ADDENDUMS.findIndex(a=>a.id===add.id);
+        if(ai>=0) ADDENDUMS.splice(ai,1);
+      }catch(e){console.warn('Əlavə silmə xətası:',e.message);}
+    }
+  }
+
+  // ── Delete the package itself ─────────────────────────────────────────────
   try{
     if(sbOn()) await sb('DELETE','packages',null,`?id=eq.${pkgId}`);
   }catch(e){showToast('Silmə xətası: '+e.message,false);return;}
   const idx=PACKAGES.findIndex(p=>p.id===pkgId);
   if(idx>=0) PACKAGES.splice(idx,1);
   invalidatePkgStatsCache();
-  showToast('Kart paketi silindi.');
+
+  const extra = deleteLinked && (linkedInvoices.length||linkedAddendums.length)
+    ? ` + ${linkedInvoices.length+linkedAddendums.length} bağlı qeyd` : '';
+  showToast(`${pkgLabel} silindi${extra}.`);
   openDetailModal(pid);
 }
 
@@ -4545,6 +4663,39 @@ async function deleteInvoice(invId, fromDetail=false){
   if(idx>=0) INVOICES.splice(idx,1);
   showToast('Faktura silindi.');
   if(fromDetail) closeModal('invoiceDetailModal');
+  renderInvoicesPage();
+}
+
+function updateInvBulkBar(){
+  const checked=[...document.querySelectorAll('.inv-cb:checked')];
+  const bar=document.getElementById('invBulkBar');
+  const count=document.getElementById('invBulkCount');
+  if(bar){ bar.style.display = checked.length>0 ? 'flex' : 'none'; }
+  if(count){ count.textContent = `${checked.length} faktura seçildi`; }
+  const allCb=document.getElementById('invCbAll');
+  const total=document.querySelectorAll('.inv-cb').length;
+  if(allCb){ allCb.indeterminate=checked.length>0&&checked.length<total; }
+  if(allCb && checked.length===total && total>0) allCb.checked=true;
+  if(allCb && checked.length===0) allCb.checked=false;
+}
+
+function toggleAllInvCbs(checked){
+  document.querySelectorAll('.inv-cb').forEach(cb=>cb.checked=checked);
+  updateInvBulkBar();
+}
+
+async function bulkDeleteInvoices(){
+  const ids=[...document.querySelectorAll('.inv-cb:checked')].map(cb=>Number(cb.dataset.id));
+  if(!ids.length) return;
+  if(!confirm(`${ids.length} fakturanı silmək istəyirsiniz?`)) return;
+  for(const id of ids){
+    try{
+      if(sbOn()) await sb('DELETE','invoices',null,`?id=eq.${id}`);
+      const idx=INVOICES.findIndex(i=>i.id===id);
+      if(idx>=0) INVOICES.splice(idx,1);
+    }catch(e){ console.warn('Faktura silmə xətası:',e.message); }
+  }
+  showToast(`${ids.length} faktura silindi.`);
   renderInvoicesPage();
 }
 
@@ -4575,7 +4726,7 @@ function calcFeeResult(pid){
       <strong style="color:#6a1b9a">${fmtMoney(commission)}</strong>
       <span style="color:#94a3b8;font-size:11px">(${rate.toFixed(3)}% effektiv)</span>
     </span>
-    <button class="btn btn-outline btn-sm" style="border-color:#7b1fa2;color:#7b1fa2" onclick="openCommissionCalc(${pid})">
+    <button class="btn btn-outline btn-sm" style="border-color:#7b1fa2;color:#7b1fa2" onclick="openCalcInline(${pid})">
       <i class="fa-solid fa-table-list"></i> Aylıq Breakdown
     </button>
   </div>`;
@@ -4592,6 +4743,7 @@ const TEMPLATE_FILES = {
   contract: 'BaaS_Contract_template.docx',
   tariff:   'BaaS_Annex_template.docx',  // "Tarif" button generates the Annex
   annex:    'BaaS_Annex_template.docx',
+  akt:      'BaaS_AKT_template.docx',
   nda:      'BaaS_NDA_template.docx',
 };
 const FORM_AZ = {MMC:'Məhdud Məsuliyyətli Cəmiyyəti', ASC:'Açıq Səhmdar Cəmiyyəti', SC:'Səhmdar Cəmiyyəti', QSC:'Qapalı Səhmdar Cəmiyyəti', IP:'Fərdi Sahibkar'};
@@ -4613,7 +4765,7 @@ function _formatDateEn(iso){
   return d.toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
 }
 
-function _buildTagMap(partner, deal, pkg, feePkg){
+function _buildTagMap(partner, deal, pkg, feePkg, inv=null){
   const year = new Date().getFullYear();
   const today = new Date().toISOString().slice(0,10);
   const m = {};
@@ -4630,6 +4782,8 @@ function _buildTagMap(partner, deal, pkg, feePkg){
   m['partner_bank_name']          = partner.bank_name || '';
   m['partner_bank_account']       = partner.bank_account || '';
   m['partner_bank_code']          = partner.bank_code || '';
+  m['partner_bank_voen']          = partner.bank_voen || '';      // partner's bank VÖEN (AKT)
+  m['partner_bank_mh']            = partner.bank_mh || '';        // müxbir hesab (AKT)
   m['partner_signatory_name']     = partner.signatory || '';
   m['partner_signatory_position'] = partner.signatory_pos || '';
 
@@ -4656,10 +4810,195 @@ function _buildTagMap(partner, deal, pkg, feePkg){
   m['annex_date_az']             = _formatDateAz(terms.annex_date || today);
   m['annex_valid_until_az']      = _formatDateAz(terms.annex_valid_until || (deal && deal.end_date));
 
+  // AKT-specific fields (populated when generating from an invoice)
+  m['akt_no']      = inv ? (inv.number || '') : '';
+  m['akt_date_az'] = _formatDateAz(inv ? (inv.issue_date || today) : today);
+
+  // AKT commission table row (first line item from invoice)
+  const invLine = inv && inv.line_items && inv.line_items[0];
+  m['akt_row_1_description'] = invLine ? (invLine.description_legal || invLine.description_internal || '') : '';
+  m['akt_row_1_amount']      = invLine ? fmtMoney(invLine.amount || 0) : '';
+
+  // Annex commission table row (first one-time item from active fee package)
+  const otItems = feePkg ? ((feePkg.tiers || {}).one_time || []) : [];
+  m['commission_row_1_type']   = otItems[0] ? (otItems[0].name_legal || otItems[0].name_internal || '') : '';
+  m['commission_row_1_period'] = otItems[0] ? (otItems[0].date_payable_type === 'exact'
+    ? _formatDateAz(otItems[0].date_payable_date)
+    : otItems[0].date_payable_days ? otItems[0].date_payable_days + ' gün' : 'Birdəfəlik') : '';
+  m['commission_row_1_amount'] = otItems[0] ? fmtMoney(otItems[0].sum || 0) : '';
+
+  // Monthly fee clause — populated in generateDocx based on annexPkgs; default empty here
+  m['monthly_fee_clause'] = pkg && pkg.monthly_fee != null
+    ? 'Qeyd: Tərəfdaşın kart paketi üzrə müəyyən edilmiş limit aşıldığı halda paket ləğv olunur. Limit aşıldıqdan sonra 30 (otuz) gün ərzində yeni paket imzalanmadıqda Bankın standart tariflərini tətbiq edilir.'
+    : '';
+
   return m;
 }
 
-async function generateDocx(pid, type){
+// ── Expand commission/AKT table rows dynamically ─────────────────────────────
+// If the fee package has N one_time items (or invoice has N line_items),
+// duplicates the template row for each item and substitutes values directly.
+// Handles {{commission_row_1_*}} → N rows, and {{akt_row_1_*}} → N rows.
+function _expandDocxTableRows(xml, feePkg, inv, addendum, annexPkgs) {
+  annexPkgs = annexPkgs || [];
+
+  // ── 1. Build all annex commission rows in order ───────────────────────────
+  const commRows = [];
+
+  // 1a. Card fees — one row per package that has a per-card price
+  for (const pkg of annexPkgs) {
+    const cardPrice = (addendum && addendum.card_terms && addendum.card_terms[pkg.id] != null)
+      ? Number(addendum.card_terms[pkg.id])
+      : (pkg.price_per_card || null);
+    if (cardPrice != null && cardPrice > 0) {
+      commRows.push({
+        type:   `Plastik kart xidmət haqqı (${fmtN(pkg.size)} kart × ₼${cardPrice}/kart)`,
+        period: 'Birdəfəlik',
+        amount: fmtMoney(cardPrice * pkg.size)
+      });
+    }
+  }
+
+  // 1b. Monthly fees — one row per package that has a monthly_fee
+  for (const pkg of annexPkgs) {
+    if (pkg.monthly_fee != null) {
+      let amtStr = fmtMoney(pkg.monthly_fee);
+      if (pkg.monthly_fee_cap_type === 'amount' && pkg.monthly_fee_cap_value != null)
+        amtStr += ` (maks ${fmtMoney(pkg.monthly_fee_cap_value)})`;
+      else if (pkg.monthly_fee_cap_type === 'pct' && pkg.monthly_fee_cap_value != null)
+        amtStr += ` (maks ${pkg.monthly_fee_cap_value}%)`;
+      commRows.push({ type: 'Aylıq kart xidmət haqqı', period: 'Hər ay', amount: amtStr });
+    }
+  }
+
+  // 1c. One-time commissions from fee package
+  const otItems = feePkg ? ((feePkg.tiers || {}).one_time || []) : [];
+  const _refDate = (addendum && addendum.date) ? new Date(addendum.date) : new Date();
+  for (const item of otItems) {
+    let period;
+    if (item.date_payable_type === 'exact' && item.date_payable_date) {
+      period = _formatDateAz(item.date_payable_date);
+    } else if (item.date_payable_type === 'days' && item.date_payable_days) {
+      const due = new Date(_refDate);
+      due.setDate(due.getDate() + Number(item.date_payable_days));
+      period = _formatDateAz(due.toISOString().slice(0, 10));
+    } else {
+      period = 'Birdəfəlik';
+    }
+    commRows.push({
+      type:   item.name_legal || item.name_internal || '',
+      period,
+      amount: fmtMoney(item.sum || 0)
+    });
+  }
+
+  // 1d. Transaction rules — one row per rule
+  const rules = feePkg ? ((feePkg.tiers || {}).rules || []) : [];
+  for (const rule of rules) {
+    const mccStr = (rule.mcc && rule.mcc.length) ? `MCC: ${rule.mcc.join(', ')}` : 'Standart';
+    const typeName = rule.name_legal || rule.name_internal || `Əməliyyat komisyonu — ${mccStr}`;
+    let amtStr = `${rule.pct != null ? rule.pct : 0}%`;
+    if (rule.min_amt) amtStr += `, min ${fmtMoney(rule.min_amt)}`;
+    if (rule.max_amt) amtStr += `, maks ${fmtMoney(rule.max_amt)}`;
+    commRows.push({ type: typeName, period: 'Hər növbəti ayın ilk 5 günü', amount: amtStr });
+  }
+
+  // Expand the commission table row template
+  if (commRows.length > 0) {
+    const trRe = /<w:tr[ >][\s\S]*?<\/w:tr>/g;
+    let m; trRe.lastIndex = 0;
+    while ((m = trRe.exec(xml)) !== null) {
+      if (m[0].includes('commission_row_1_')) {
+        const tpl = m[0];
+        const expanded = commRows.map(r => tpl
+          .replace(/\{\{commission_row_1_type\}\}/g,   _xmlEscape(r.type))
+          .replace(/\{\{commission_row_1_period\}\}/g, _xmlEscape(r.period))
+          .replace(/\{\{commission_row_1_amount\}\}/g, _xmlEscape(r.amount))
+        ).join('');
+        xml = xml.slice(0, m.index) + expanded + xml.slice(m.index + tpl.length);
+        break;
+      }
+    }
+  }
+
+  // ── 2. AKT line-item rows ─────────────────────────────────────────────────
+  let aktLineItems = inv ? (inv.line_items || []) : [];
+
+  // Auto-expand: if invoice has 1 line item but spans multiple months, build per-month rows
+  if (inv && aktLineItems.length <= 1 && inv.period_from && inv.period_to) {
+    const _pfDate = new Date(inv.period_from);
+    const _ptDate = new Date(inv.period_to);
+    const _pfM = _pfDate.getFullYear() * 12 + _pfDate.getMonth();
+    const _ptM = _ptDate.getFullYear() * 12 + _ptDate.getMonth();
+    if (_ptM > _pfM) {
+      // Multi-month span — compute per-month breakdown
+      const _pid = inv.partner_id;
+      const _fp = (FEE_PACKAGES[_pid] || []).find(f => f.status === 'active');
+      const _rate = _fp ? (_fp.tiers?.default?.pct || 0) : 0;
+      const _mmap = {};
+      const _ensM = m => { if (!_mmap[m]) _mmap[m] = {cnt:0, vol:0}; };
+      if (TRANSACTIONS.length) {
+        const _ptSet = new Set((PROD_TYPES || []).filter(pt => pt.partner_id === _pid).map(pt => pt.code));
+        TRANSACTIONS.forEach(t => {
+          if (!_ptSet.has(t.prod_type)) return;
+          if (t.op_date < inv.period_from || t.op_date > inv.period_to) return;
+          const m = t.op_date.slice(0,7); _ensM(m);
+          _mmap[m].cnt++; _mmap[m].vol += t.amt;
+        });
+      }
+      // Fallback to synthetic if no real data found
+      if (!Object.keys(_mmap).length) {
+        const _d = new Date(inv.period_from);
+        while (_d <= _ptDate) {
+          const m = _d.toISOString().slice(0,7);
+          if (!_mmap[m]) {
+            const seed = _d.getMonth() + 1 + _pid;
+            const dC = Math.floor(400 + seed*173%600);
+            const dV = Math.floor(dC * (800 + seed*311%1800));
+            const cC = Math.floor(dC * 0.12);
+            const cV = Math.floor(dV * 0.07);
+            _mmap[m] = {cnt: dC+cC, vol: dV+cV};
+          }
+          _d.setMonth(_d.getMonth() + 1);
+        }
+      }
+      const _AZ = ['Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr'];
+      const _mLabel = m => { const [y,mo] = m.split('-'); return `${_AZ[Number(mo)-1]} ${y}`; };
+      const _months = Object.keys(_mmap).sort();
+      if (_months.length > 1) {
+        aktLineItems = _months.map(m => {
+          const d = _mmap[m];
+          const comm = parseFloat((d.vol * (_rate/100)).toFixed(2));
+          return {
+            description_legal: `Ödəniş əməliyyatlarına görə komissiya haqqı — ${_mLabel(m)} (dövriyyə: ${fmtMoney(d.vol)})`,
+            description_internal: `Köçürmə komissiyası — ${_mLabel(m)} (${fmtN(d.cnt)} əməliyyat, ${fmtMoney(d.vol)})`,
+            amount: comm
+          };
+        });
+      }
+    }
+  }
+
+  if (aktLineItems.length > 0) {
+    const trRe2 = /<w:tr[ >][\s\S]*?<\/w:tr>/g;
+    let m2; trRe2.lastIndex = 0;
+    while ((m2 = trRe2.exec(xml)) !== null) {
+      if (m2[0].includes('akt_row_1_')) {
+        const tpl2 = m2[0];
+        const expanded2 = aktLineItems.map(li => tpl2
+          .replace(/\{\{akt_row_1_description\}\}/g, _xmlEscape(li.description_legal || li.description_internal || ''))
+          .replace(/\{\{akt_row_1_amount\}\}/g,      _xmlEscape(fmtMoney(li.amount || 0)))
+        ).join('');
+        xml = xml.slice(0, m2.index) + expanded2 + xml.slice(m2.index + tpl2.length);
+        break;
+      }
+    }
+  }
+
+  return xml;
+}
+
+async function generateDocx(pid, type, extraId=null){
   if (typeof JSZip === 'undefined' || typeof saveAs === 'undefined') {
     showToast('JSZip/FileSaver yüklənmir. İnternet bağlantısını yoxlayın.', false); return;
   }
@@ -4669,17 +5008,55 @@ async function generateDocx(pid, type){
   const partner = PARTNERS.find(x => x.id === pid);
   if (!partner) { showToast('Tərəfdaş tapılmadı!', false); return; }
 
-  const deal    = (DEALS    || []).find(d => d.partner_id === pid && d.status === 'active') || null;
-  const pkg     = (PACKAGES || []).find(pk => pk.pid === pid && pk.status === 'active')     || null;
-  const feePkg  = (FEE_PACKAGES[pid] || []).find(fp => fp.status === 'active')               || null;
+  const deal   = (DEALS    || []).find(d => d.partner_id === pid && d.status === 'active') || null;
+  const pkg    = (PACKAGES || []).find(pk => pk.pid === pid && pk.status === 'active')     || null;
+  let feePkg   = (FEE_PACKAGES[pid] || []).find(fp => fp.status === 'active')              || null;
+
+  // ── Resolve entity-specific context ──────────────────────────────────────
+  let inv = null;
+  let addendum = null;
+  let annex_no_override = null;
+
+  if (type === 'akt' && extraId != null) {
+    inv = INVOICES.find(i => i.id === extraId) || null;
+    if (!inv) { showToast('Faktura tapılmadı!', false); return; }
+  }
+
+  if ((type === 'annex' || type === 'tariff') && extraId != null) {
+    addendum = ADDENDUMS.find(a => a.id === extraId) || null;
+    if (!addendum) { showToast('Əlavə tapılmadı!', false); return; }
+    // Use the addendum's own fee package (first listed)
+    const fpId = (addendum.fee_package_ids || [])[0];
+    if (fpId) feePkg = (FEE_PACKAGES[pid] || []).find(fp => fp.id === fpId) || feePkg;
+    // Sequential annex number among this partner's addendums (1-based)
+    const sorted = ADDENDUMS.filter(a => a.partner_id === pid).sort((a,b) => a.id - b.id);
+    annex_no_override = sorted.findIndex(a => a.id === extraId) + 1;
+  }
+
+  // Packages referenced by this addendum (for card fees + monthly fees rows)
+  const annexPkgs = addendum
+    ? (addendum.package_ids || []).map(id => PACKAGES.find(p => p.id === id)).filter(Boolean)
+    : (pkg ? [pkg] : []);
+
+  // ── Build filename ────────────────────────────────────────────────────────
+  const safeName = (partner.name || 'partner').replace(/[\\/:*?"<>|]/g, '_');
+  let fileSuffix;
+  if (type === 'akt')                      fileSuffix = inv ? inv.number : new Date().getFullYear();
+  else if (type === 'annex' || type === 'tariff')
+                                           fileSuffix = addendum ? addendumLabel(addendum.id) : new Date().getFullYear();
+  else                                     fileSuffix = new Date().getFullYear();
+
+  const PREFIX_MAP = { contract:'Müqavilə', annex:'Əlavə', tariff:'Əlavə', akt:'AKT', nda:'NDA' };
+  const filename = `${PREFIX_MAP[type]||type}_${safeName}_${fileSuffix}.docx`;
 
   // Download the template from Supabase Storage
   showToast(`Şablon yüklənir: ${tplName}…`, true);
   let tplBlob;
   try {
-    const url = `${SUPABASE_URL}/storage/v1/object/${TEMPLATE_BUCKET}/${encodeURIComponent(tplName)}`;
+    const url = `${SUPABASE_URL}/storage/v1/object/${TEMPLATE_BUCKET}/${encodeURIComponent(tplName)}?t=${Date.now()}`;
     const r = await fetch(url, {
-      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+      cache: 'no-store'
     });
     if (!r.ok) throw new Error(`HTTP ${r.status} — ${tplName} bucket-də tapılmadı`);
     tplBlob = await r.blob();
@@ -4696,10 +5073,20 @@ async function generateDocx(pid, type){
     if (!docPart) throw new Error('word/document.xml şablonda tapılmadı');
     let docXml = await docPart.async('string');
 
-    const tags = _buildTagMap(partner, deal, pkg, feePkg);
+    // Expand multi-row tables before tag replacement
+    docXml = _expandDocxTableRows(docXml, feePkg, inv, addendum, annexPkgs);
+
+    const tags = _buildTagMap(partner, deal, pkg, feePkg, inv);
+    if (annex_no_override != null) tags['annex_no'] = annex_no_override;
+    // Override monthly_fee_clause using actual annex packages
+    if (annexPkgs && annexPkgs.length) {
+      tags['monthly_fee_clause'] = annexPkgs.some(p => p.monthly_fee != null)
+        ? 'Qeyd: Tərəfdaşın kart paketi üzrə müəyyən edilmiş limit aşıldığı halda paket ləğv olunur. Limit aşıldıqdan sonra 30 (otuz) gün ərzində yeni paket imzalanmadıqda Bankın standart tariflərini tətbiq edilir.'
+        : '';
+    }
     for (const [k, v] of Object.entries(tags)) {
-      const re = new RegExp(`\{\{\s*${k}\s*\}\}`, 'g');
-      docXml = docXml.replace(re, _xmlEscape(v));
+      const re = new RegExp(`\{\{\\s*${k}\\s*\}\}`, 'g');
+      docXml = docXml.replace(re, _xmlEscape(String(v ?? '')));
     }
     zip.file('word/document.xml', docXml);
 
@@ -4708,9 +5095,6 @@ async function generateDocx(pid, type){
       mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     });
 
-    const prefix = type === 'nda' ? 'NDA' : type === 'contract' ? 'Müqavilə' : 'Əlavə';
-    const safeName = (partner.name || 'partner').replace(/[\\/:*?"<>|]/g, '_');
-    const filename = `${prefix}_${safeName}_${new Date().getFullYear()}.docx`;
     saveAs(blob, filename);
     showToast(`"${filename}" yükləndi.`, true);
   } catch (e) {
@@ -4730,9 +5114,161 @@ function refreshAll(){
 
 
 // ── Addendum Helpers ──
-function markAddendumSigned(addId, pid){
-  const a=ADDENDUMS.find(x=>x.id===addId);
-  if(a){ a.status='signed'; showToast(`${addendumLabel(addId)} imzalandı kimi işarələndi.`); openDetailModal(pid); }
+async function signAddendum(addId, pid){
+  const a = ADDENDUMS.find(x => x.id === addId);
+  if(!a) return;
+  const today = isoToday();
+  let invCreated = 0;
+
+  // ── Card packages: monthly fee + price per card ──
+  for(const pkgId of (a.package_ids || [])){
+    const pkg = PACKAGES.find(p => p.id === pkgId);
+    if(!pkg) continue;
+    const pkgLabel = `PKG-${String(pkg.id).padStart(3,'0')}`;
+
+    // 1. Monthly fee — one invoice per calendar month for the full package period
+    if(pkg.monthly_fee != null && pkg.from && pkg.to){
+      // _li: format a local Date as YYYY-MM-DD (avoids UTC-shift from toISOString in non-UTC timezones)
+      const _li = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      // Parse pkg end as YYYY-MM so comparison is timezone-safe (no Date object involved)
+      const [pkgEndY, pkgEndM] = pkg.to.split('-').map(Number); // 1-indexed month
+      const pkgEndYM = pkgEndY * 12 + (pkgEndM - 1); // 0-indexed for arithmetic
+      const [pkgFromY, pkgFromM] = pkg.from.split('-').map(Number);
+      let cursor = new Date(pkgFromY, pkgFromM - 1, 1); // local midnight, 1st of start month
+      while(cursor.getFullYear() * 12 + cursor.getMonth() <= pkgEndYM){
+        const mFrom = _li(cursor);                                               // 1st of month
+        const mTo   = _li(new Date(cursor.getFullYear(), cursor.getMonth()+1, 0)); // last day of month
+        const alreadyHas = INVOICES.some(i =>
+          i.partner_id===pid && i.type==='monthly' && i.period_from===mFrom &&
+          i.line_items?.some(li=>li.ref_pkg_id===pkgId)
+        );
+        if(!alreadyHas){
+          // Due = 1st of the same month (prepayment)
+          const monthLabel = `${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,'0')}`;
+          _createInvoice({number:_nextInvNumber(),partner_id:pid,type:'monthly',status:'draft',
+            issue_date:today,due_date:mFrom,
+            period_from:mFrom,period_to:mTo,
+            notes:`${pkgLabel} aylıq kart xidmət haqqı (${monthLabel})`,
+            line_items:[{description_internal:`Aylıq kart xidmət haqqı — ${pkgLabel} (${monthLabel})`,
+              description_legal:'Aylıq kart xidmət haqqı',amount:pkg.monthly_fee,
+              source:'monthly_fee',ref_pkg_id:pkgId}],
+            total:pkg.monthly_fee});
+          invCreated++;
+        }
+        cursor = new Date(cursor.getFullYear(), cursor.getMonth()+1, 1);
+      }
+    }
+
+    // 2. Price per card (use card_terms from addendum if set, else package field)
+    const cardPrice = (a.card_terms && a.card_terms[pkgId] != null)
+      ? Number(a.card_terms[pkgId])
+      : (pkg.price_per_card || null);
+    if(cardPrice != null && cardPrice > 0){
+      const alreadyHas = INVOICES.some(i =>
+        i.partner_id === pid && i.type === 'card_payment' &&
+        i.line_items?.some(li => li.ref_pkg_id === pkgId)
+      );
+      if(!alreadyHas){
+        const total = cardPrice * pkg.size;
+        const due = new Date(); due.setDate(due.getDate()+30);
+        _createInvoice({number:_nextInvNumber(),partner_id:pid,type:'card_payment',status:'draft',
+          issue_date:today,due_date:due.toISOString().slice(0,10),
+          notes:`${pkgLabel} kart xidmət haqqı (${fmtN(pkg.size)} kart × ₼${cardPrice}/kart)`,
+          line_items:[{description_internal:`Kart xidmət haqqı — ${pkgLabel}`,
+            description_legal:'Plastik kart xidmət haqqı',amount:total,
+            source:'card_payment',ref_pkg_id:pkgId,qty:pkg.size,unit_price:cardPrice}],
+          total});
+        invCreated++;
+      }
+    }
+  }
+
+  // ── Fee packages: one-time commissions ──
+  for(const fpId of (a.fee_package_ids || [])){
+    const fp = (FEE_PACKAGES[pid] || []).find(f => f.id === fpId);
+    if(!fp) continue;
+    const otItems = (fp.tiers || {}).one_time || [];
+    const alreadyInvoiced = new Set(
+      INVOICES
+        .filter(i => i.partner_id===pid && i.type==='onetime' &&
+                     i.line_items?.some(li => li.ref_fp_id===fpId))
+        .flatMap(i => i.line_items.map(li => li.description_internal))
+    );
+    for(const ot of otItems){
+      if(alreadyInvoiced.has(ot.name_internal)) continue;
+      const due = new Date();
+      if(ot.date_payable_type==='exact' && ot.date_payable_date){
+        const d=new Date(ot.date_payable_date); if(!isNaN(d)) due.setTime(d.getTime());
+      } else if(ot.date_payable_type==='days' && ot.date_payable_days){
+        due.setDate(due.getDate()+ot.date_payable_days);
+      } else { due.setDate(due.getDate()+30); }
+      _createInvoice({number:_nextInvNumber(),partner_id:pid,type:'onetime',status:'draft',
+        issue_date:today,due_date:due.toISOString().slice(0,10),
+        notes:`${fp.name} — ${ot.name_internal}`,
+        line_items:[{description_internal:ot.name_internal,
+          description_legal:ot.name_legal||ot.name_internal,
+          amount:ot.sum||0,source:'one_time',ref_fp_id:fpId}],
+        total:ot.sum||0});
+      invCreated++;
+    }
+  }
+
+  // Mark signed + persist
+  a.status = 'signed';
+  try{
+    if(sbOn()) await sb('PATCH','addendums',{status:'signed'},`?id=eq.${addId}`);
+  }catch(e){ console.warn('Addendum sign persist:',e.message); }
+
+  const label = addendumLabel(addId);
+  const invMsg = invCreated > 0 ? ` ${invCreated} faktura avtomatik yaradıldı.` : ' Faktura yaradılmadı (artıq mövcuddur).';
+  showToast(`${label} imzalandı.${invMsg}`);
+  openDetailModal(pid);
+}
+
+// ── Addendum Delete Helpers ──
+async function deleteAddendum(addId, pid){
+  const a = ADDENDUMS.find(x => x.id === addId);
+  if(!a) return;
+  if(!confirm(`${addendumLabel(addId)} əlavəsini silmək istəyirsiniz?`)) return;
+  try{
+    if(sbOn()) await sb('DELETE','addendums',null,`?id=eq.${addId}`);
+  }catch(e){ showToast('Silmə xətası: '+e.message,false); return; }
+  const idx = ADDENDUMS.findIndex(x=>x.id===addId);
+  if(idx>=0) ADDENDUMS.splice(idx,1);
+  showToast(`${addendumLabel(addId)} silindi.`);
+  openDetailModal(pid);
+}
+
+function updateAddBulkBtn(pid){
+  const checked = document.querySelectorAll(`.add-cb-${pid}:checked`).length;
+  const btn = document.getElementById(`addBulkDelBtn-${pid}`);
+  if(btn) btn.style.display = checked > 0 ? '' : 'none';
+  const allCb = document.getElementById(`addCbAll-${pid}`);
+  const total = document.querySelectorAll(`.add-cb-${pid}`).length;
+  if(allCb) allCb.indeterminate = checked > 0 && checked < total;
+  if(allCb && checked === total && total > 0) allCb.checked = true;
+  if(allCb && checked === 0) allCb.checked = false;
+}
+
+function toggleAllAddendumCbs(pid, checked){
+  document.querySelectorAll(`.add-cb-${pid}`).forEach(cb => cb.checked = checked);
+  updateAddBulkBtn(pid);
+}
+
+async function bulkDeleteAddendums(pid){
+  const ids = [...document.querySelectorAll(`.add-cb-${pid}:checked`)].map(cb=>Number(cb.dataset.id));
+  if(!ids.length) return;
+  const labels = ids.map(id=>addendumLabel(id)).join(', ');
+  if(!confirm(`${ids.length} əlavəni silmək istəyirsiniz?\n${labels}`)) return;
+  for(const id of ids){
+    try{
+      if(sbOn()) await sb('DELETE','addendums',null,`?id=eq.${id}`);
+      const idx=ADDENDUMS.findIndex(a=>a.id===id);
+      if(idx>=0) ADDENDUMS.splice(idx,1);
+    }catch(e){ console.warn('Əlavə silmə xətası:',e.message); }
+  }
+  showToast(`${ids.length} əlavə silindi.`);
+  openDetailModal(pid);
 }
 
 // ── Invoice Signed Doc Helpers ──
@@ -4755,22 +5291,146 @@ function removeSignedDoc(invId){
 
 // ── Per-partner Commission Calculator ──
 function openCommissionCalc(pid){
-  const p=PARTNERS.find(x=>x.id===pid);
+  // Legacy — kept for Fakturalar tab button; delegates to inline version
+  openCalcInline(pid);
+}
+
+const _AZ_MONTHS_CALC=['Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr'];
+
+function openCalcInline(pid){
   const fps=(FEE_PACKAGES[pid]||[]).filter(f=>f.status==='active');
   if(!fps.length){ showToast('Bu tərəfdaşın aktiv komisyon paketi yoxdur.',false); return; }
-  document.getElementById('commCalcPid').value=pid;
-  document.getElementById('commCalcTitle').textContent=`Komissiya Hesablama — ${p?.name||''}`;
-  // Default period: previous month
+
+  const el=document.getElementById(`calcInline-${pid}`);
+  if(!el) return;
+  if(el.style.display!=='none' && el.dataset.pid===String(pid)){
+    el.style.display='none'; return; // toggle off
+  }
+  el.dataset.pid=pid;
+
   const now=new Date();
-  const prev=new Date(now.getFullYear(), now.getMonth()-1, 1);
-  const prevEnd=new Date(now.getFullYear(), now.getMonth(), 0);
-  document.getElementById('commCalcFrom').value=prev.toISOString().slice(0,10);
-  document.getElementById('commCalcTo').value=prevEnd.toISOString().slice(0,10);
-  document.getElementById('commCalcResult').innerHTML='';
-  openModal('commissionCalcModal');
-  initDatePickerConfirm(document.getElementById('commissionCalcModal'));
-  // Auto-calculate with default dates so the monthly breakdown is immediately visible
-  setTimeout(calcCommissionPreview, 80);
+  const prevM=now.getMonth()===0?11:now.getMonth()-1;
+  const prevY=now.getMonth()===0?now.getFullYear()-1:now.getFullYear();
+
+  const monthOpts=(selM)=>_AZ_MONTHS_CALC.map((n,i)=>
+    `<option value="${i+1}"${i===selM?'selected':''}>${n}</option>`).join('');
+  const yearRange=Array.from({length:6},(_,i)=>now.getFullYear()-2+i);
+  const yearOpts=(selY)=>yearRange.map(y=>`<option value="${y}"${y===selY?'selected':''}>${y}</option>`).join('');
+
+  el.style.display='block';
+  el.innerHTML=`
+    <div style="font-weight:700;color:#7b1fa2;margin-bottom:12px;font-size:13px">
+      <i class="fa-solid fa-calculator"></i> Aylıq Komissiya Hesablaması
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+      <div>
+        <div style="font-size:10px;color:#64748b;font-weight:600;margin-bottom:4px">BAŞLANĞIC</div>
+        <div style="display:flex;gap:4px">
+          <select id="ciFromM-${pid}" style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px">${monthOpts(prevM)}</select>
+          <select id="ciFromY-${pid}" style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px">${yearOpts(prevY)}</select>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:#64748b;font-weight:600;margin-bottom:4px">SON</div>
+        <div style="display:flex;gap:4px">
+          <select id="ciToM-${pid}" style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px">${monthOpts(prevM)}</select>
+          <select id="ciToY-${pid}" style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px">${yearOpts(prevY)}</select>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="calcCommissionInline(${pid})">
+        <i class="fa-solid fa-calculator"></i> Hesabla
+      </button>
+    </div>
+    <div id="ciResult-${pid}"></div>`;
+
+  // Auto-calc on open
+  setTimeout(()=>calcCommissionInline(pid), 50);
+}
+
+function calcCommissionInline(pid){
+  const fromM=parseInt(document.getElementById(`ciFromM-${pid}`)?.value)||1;
+  const fromY=parseInt(document.getElementById(`ciFromY-${pid}`)?.value)||new Date().getFullYear();
+  const toM  =parseInt(document.getElementById(`ciToM-${pid}`)?.value)||1;
+  const toY  =parseInt(document.getElementById(`ciToY-${pid}`)?.value)||new Date().getFullYear();
+
+  const from=`${fromY}-${String(fromM).padStart(2,'0')}-01`;
+  const toLastDay=new Date(toY,toM,0).getDate();
+  const to=`${toY}-${String(toM).padStart(2,'0')}-${String(toLastDay).padStart(2,'0')}`;
+
+  const fps=(FEE_PACKAGES[pid]||[]).filter(f=>f.status==='active');
+  const fp=fps[0]; if(!fp) return;
+  const rate=fp.tiers?.default?.pct||0;
+
+  const monthMap={};
+  const ensureMonth=m=>{ if(!monthMap[m]) monthMap[m]={cnt:0,vol:0,dCnt:0,cCnt:0}; };
+
+  if(TRANSACTIONS.length){
+    const ptSet=new Set(PROD_TYPES.filter(pt=>pt.partner_id===pid).map(pt=>pt.code));
+    TRANSACTIONS.forEach(t=>{
+      if(!ptSet.has(t.prod_type)) return;
+      if(t.op_date<from||t.op_date>to) return;
+      const m=t.op_date.slice(0,7); ensureMonth(m);
+      monthMap[m].cnt++; monthMap[m].vol+=t.amt;
+      if(isCreditOp(t.op_type)) monthMap[m].cCnt++; else monthMap[m].dCnt++;
+    });
+  } else {
+    const d=new Date(from); const end=new Date(to);
+    while(d<=end){
+      const m=d.toISOString().slice(0,7);
+      if(!monthMap[m]){
+        const seed=d.getMonth()+1+pid;
+        const dC=Math.floor(400+seed*173%600); const dV=Math.floor(dC*(800+seed*311%1800));
+        const cC=Math.floor(dC*0.12); const cV=Math.floor(dV*0.07);
+        monthMap[m]={cnt:dC+cC,vol:dV+cV,dCnt:dC,cCnt:cC};
+      }
+      d.setMonth(d.getMonth()+1);
+    }
+  }
+
+  const months=Object.keys(monthMap).sort();
+  let totCnt=0,totVol=0,totComm=0,totD=0,totC=0;
+  months.forEach(m=>{ totCnt+=monthMap[m].cnt; totVol+=monthMap[m].vol;
+    totD+=monthMap[m].dCnt; totC+=monthMap[m].cCnt; totComm+=monthMap[m].vol*(rate/100); });
+
+  const mlabel=m=>{ const [y,mo]=m.split('-'); return`${_AZ_MONTHS_CALC[Number(mo)-1]} ${y}`; };
+
+  const rows=months.map(m=>{
+    const d=monthMap[m]; const comm=d.vol*(rate/100);
+    return`<tr style="border-bottom:1px solid #ede7f6">
+      <td style="padding:6px 8px;font-weight:600">${mlabel(m)}</td>
+      <td style="padding:6px 8px;text-align:right">${fmtN(d.cnt)}</td>
+      <td style="padding:6px 8px;text-align:right;font-size:10px;color:#7b1fa2">D:${fmtN(d.dCnt)} K:${fmtN(d.cCnt)}</td>
+      <td style="padding:6px 8px;text-align:right">${fmtMoney(d.vol)}</td>
+      <td style="padding:6px 8px;text-align:right;color:#7b1fa2;font-weight:700">${fmtMoney(comm)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById(`ciResult-${pid}`).innerHTML=months.length?`
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px">
+      <thead><tr style="background:#ede7f6">
+        <th style="padding:6px 8px;text-align:left;font-size:10px;color:#7b1fa2">Ay</th>
+        <th style="padding:6px 8px;text-align:right;font-size:10px;color:#7b1fa2">Əməliyyat</th>
+        <th style="padding:6px 8px;text-align:right;font-size:10px;color:#7b1fa2">D/K</th>
+        <th style="padding:6px 8px;text-align:right;font-size:10px;color:#7b1fa2">Həcm</th>
+        <th style="padding:6px 8px;text-align:right;font-size:10px;color:#7b1fa2">Komissiya</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr style="background:#ede7f6;font-weight:800">
+        <td style="padding:7px 8px">CƏMİ</td>
+        <td style="padding:7px 8px;text-align:right">${fmtN(totCnt)}</td>
+        <td style="padding:7px 8px;text-align:right;font-size:10px">D:${fmtN(totD)} K:${fmtN(totC)}</td>
+        <td style="padding:7px 8px;text-align:right">${fmtMoney(totVol)}</td>
+        <td style="padding:7px 8px;text-align:right;color:#7b1fa2">${fmtMoney(totComm)}</td>
+      </tr></tfoot>
+    </table>
+    <div style="background:#7b1fa2;color:#fff;border-radius:8px;padding:12px;text-align:center;margin-bottom:10px">
+      <div style="font-size:10px;opacity:.8;margin-bottom:3px">TOPLAM KOMİSSİYA MƏBLƏĞİ</div>
+      <div style="font-size:20px;font-weight:800">${fmtMoney(totComm)}</div>
+    </div>
+    <button class="btn btn-primary" style="width:100%" onclick="createCommissionInvoiceFromCalc(${pid},'${from}','${to}',${totCnt},${totVol},${totComm.toFixed(2)})">
+      <i class="fa-solid fa-plus"></i> Bu məbləğlə Faktura Yarat
+    </button>`
+  :`<div style="color:#94a3b8;text-align:center;padding:12px">Bu dövrdə əməliyyat tapılmadı.</div>`;
 }
 
 function calcCommissionPreview(){
@@ -4875,23 +5535,68 @@ function calcCommissionPreview(){
 }
 
 function createCommissionInvoiceFromCalc(pid, from, to, cnt, vol, commission){
-  const p=PARTNERS.find(x=>x.id===pid);
-  const monthLabel=from.slice(0,7);
   const alreadyExists=INVOICES.some(i=>i.partner_id===pid&&i.type==='commission'&&i.period_from===from&&i.period_to===to);
   if(alreadyExists){showToast('Bu dövriyyə üçün artıq komissiya fakturası mövcuddur.',false);return;}
+
+  // Build per-month line items (same logic as calcCommissionInline)
+  const fps=(FEE_PACKAGES[pid]||[]).filter(f=>f.status==='active');
+  const fp=fps[0];
+  const rate=fp ? (fp.tiers?.default?.pct||0) : 0;
+
+  // Compute per-month volumes
+  const monthMap={};
+  const ensureM=m=>{ if(!monthMap[m]) monthMap[m]={cnt:0,vol:0}; };
+
+  if(TRANSACTIONS.length){
+    const ptSet=new Set(PROD_TYPES.filter(pt=>pt.partner_id===pid).map(pt=>pt.code));
+    TRANSACTIONS.forEach(t=>{
+      if(!ptSet.has(t.prod_type)) return;
+      if(t.op_date<from||t.op_date>to) return;
+      const m=t.op_date.slice(0,7); ensureM(m);
+      monthMap[m].cnt++; monthMap[m].vol+=t.amt;
+    });
+  }
+  // Fallback to synthetic if no real transactions matched
+  if(!Object.keys(monthMap).length){
+    const d=new Date(from); const end=new Date(to);
+    while(d<=end){
+      const m=d.toISOString().slice(0,7);
+      if(!monthMap[m]){
+        const seed=d.getMonth()+1+pid;
+        const dC=Math.floor(400+seed*173%600); const dV=Math.floor(dC*(800+seed*311%1800));
+        const cC=Math.floor(dC*0.12); const cV=Math.floor(dV*0.07);
+        monthMap[m]={cnt:dC+cC,vol:dV+cV};
+      }
+      d.setMonth(d.getMonth()+1);
+    }
+  }
+
+  const months=Object.keys(monthMap).sort();
+  const AZ_M=['Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr'];
+  const mlabel=m=>{ const [y,mo]=m.split('-'); return`${AZ_M[Number(mo)-1]} ${y}`; };
+
+  const lineItems=months.map(m=>{
+    const d=monthMap[m];
+    const comm=parseFloat((d.vol*(rate/100)).toFixed(2));
+    return{
+      description_internal:`Köçürmə komissiyası — ${mlabel(m)} (${fmtN(d.cnt)} əməliyyat, ${fmtMoney(d.vol)})`,
+      description_legal:`Ödəniş əməliyyatlarına görə komissiya haqqı — ${mlabel(m)} (dövriyyə: ${fmtMoney(d.vol)})`,
+      amount:comm, source:'commission', ref_period:m
+    };
+  });
+
+  const total=parseFloat(lineItems.reduce((s,li)=>s+li.amount,0).toFixed(2));
   const due=new Date(); due.setDate(due.getDate()+30);
-  INVOICES.push({
-    id:_nextInvId++, number:_nextInvNumber(),
+  const label=months.length===1 ? mlabel(months[0]) : `${mlabel(months[0])} – ${mlabel(months[months.length-1])}`;
+
+  _createInvoice({
+    number:_nextInvNumber(),
     partner_id:pid, type:'commission', status:'draft',
     issue_date:isoToday(), due_date:due.toISOString().slice(0,10),
     period_from:from, period_to:to,
-    notes:`${monthLabel} köçürmə komissiyası`,
-    line_items:[{
-      description_internal:`Köçürmə komissiyası — ${monthLabel} (${fmtN(cnt)} əməliyyat, ${fmtMoney(vol)})`,
-      description_legal:'Ödəniş əməliyyatlarına görə komissiya haqqı',
-      amount:Number(commission), source:'commission', ref_period:monthLabel
-    }],
-    total:Number(commission), signed_doc:null
+    notes:`${label} köçürmə komissiyası`,
+    line_items:lineItems,
+    total, signed_doc:null
   });
   closeModal('commissionCalcModal');
   showToast(`Komissiya fakturası yaradıldı: ${_nextInvNumber()}`);
@@ -4967,8 +5672,8 @@ function createBatchCommissionInvoices(){
     if(!cb||!cb.checked||r.already) return;
     const due=new Date(); due.setDate(due.getDate()+30);
     const monthLabel=from.slice(0,7);
-    INVOICES.push({
-      id:_nextInvId++, number:_nextInvNumber(),
+    _createInvoice({
+      number:_nextInvNumber(),
       partner_id:r.p.id, type:'commission', status:'draft',
       issue_date:isoToday(), due_date:due.toISOString().slice(0,10),
       period_from:from, period_to:to, notes:`${monthLabel} köçürmə komissiyası`,
@@ -5015,12 +5720,6 @@ function openAddendumWizard(pid){
             ${pk.monthly_fee!=null?`<span style="color:#2e7d32;font-size:10px;margin-left:4px">₼${pk.monthly_fee}/ay</span>`:''}
           </span>
         </label>
-        <div style="display:flex;align-items:center;gap:8px;padding-left:24px">
-          <span style="font-size:11px;color:#64748b;white-space:nowrap">Kart başına qiymət (₼):</span>
-          <input type="number" class="aw-pkg-price" data-pkgid="${pk.id}"
-            min="0" step="0.01" placeholder="İstəyə bağlı"
-            style="width:120px;padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px">
-        </div>
       </div>`)
       .join('')
     : `<span style="color:#94a3b8;font-size:12px">Aktiv kart paketi yoxdur.</span>`;
@@ -5069,9 +5768,14 @@ function saveAddendum(){
     id, partner_id:pid, date,
     package_ids:checkedPkgs,
     fee_package_ids:checkedFps,
-    card_terms:cardTerms,   // {pkgId: pricePerCard}
+    card_terms:cardTerms,
     notes, status:'created', created_at:isoToday()
   });
+  if(sbOn()) sb('POST','addendums',{
+    partner_id:pid,date,package_ids:checkedPkgs,
+    fee_package_ids:checkedFps,card_terms:cardTerms,
+    notes,status:'created'
+  }).catch(e=>console.warn('Addendum persist:',e.message));
   closeModal('addendumWizardModal');
   showToast(`${addendumLabel(id)} uğurla yaradıldı.`);
   openDetailModal(pid);
@@ -5114,14 +5818,29 @@ const INV_STATUS_LABELS = {
   cancelled: {label:'Ləğv edilmiş',color:'#94a3b8',bg:'#f8fafc'},
 };
 const INV_TYPE_LABELS = {
-  onetime:    'Birdəfəlik',
-  monthly:    'Aylıq',
-  commission: 'Komissiya',
+  onetime:      'Birdəfəlik',
+  monthly:      'Aylıq',
+  commission:   'Komissiya',
+  card_payment: 'Kart Haqqı',
 };
 
 function invBadge(status){
   const s=INV_STATUS_LABELS[status]||{label:status,color:'#64748b',bg:'#f1f5f9'};
   return`<span style="background:${s.bg};color:${s.color};font-size:10px;font-weight:700;border-radius:99px;padding:2px 8px;white-space:nowrap">${s.label}</span>`;
+}
+
+// ── Invoice table sort state ──────────────────────────────────────────────
+const INV_SORT = { col: 'id', dir: -1 }; // default: newest first
+function setInvSort(col){
+  if(INV_SORT.col === col){ INV_SORT.dir *= -1; }
+  else { INV_SORT.col = col; INV_SORT.dir = col === 'id' || col === 'due_date' || col === 'total' ? -1 : 1; }
+  renderInvoicesPage();
+}
+function _invSortIcon(col){
+  if(INV_SORT.col !== col) return `<i class="fa-solid fa-sort" style="opacity:.3;font-size:9px;margin-left:3px"></i>`;
+  return INV_SORT.dir === 1
+    ? `<i class="fa-solid fa-sort-up" style="color:#1565c0;font-size:9px;margin-left:3px"></i>`
+    : `<i class="fa-solid fa-sort-down" style="color:#1565c0;font-size:9px;margin-left:3px"></i>`;
 }
 
 function renderInvoicesPage(){
@@ -5143,7 +5862,18 @@ function renderInvoicesPage(){
     if(sfilt && inv.status!==sfilt) return false;
     if(tfilt && inv.type!==tfilt) return false;
     return true;
-  }).sort((a,b)=>b.id-a.id);
+  }).sort((a,b)=>{
+    const col=INV_SORT.col, dir=INV_SORT.dir;
+    let va, vb;
+    if(col==='number')       { va=a.number||''; vb=b.number||''; return dir*(va.localeCompare(vb)); }
+    if(col==='partner')      { const pa=PARTNERS.find(x=>x.id===a.partner_id); const pb=PARTNERS.find(x=>x.id===b.partner_id); return dir*((pa?.name||'').localeCompare(pb?.name||'')); }
+    if(col==='type')         { va=a.type||''; vb=b.type||''; return dir*(va.localeCompare(vb)); }
+    if(col==='due_date')     { va=a.due_date||''; vb=b.due_date||''; return dir*(va.localeCompare(vb)); }
+    if(col==='period_from')  { va=a.period_from||''; vb=b.period_from||''; return dir*(va.localeCompare(vb)); }
+    if(col==='total')        { return dir*(a.total - b.total); }
+    if(col==='status')       { va=a.status||''; vb=b.status||''; return dir*(va.localeCompare(vb)); }
+    return dir*(b.id - a.id); // default: id
+  });
 
   // KPIs
   const total=INVOICES.length;
@@ -5172,16 +5902,23 @@ function renderInvoicesPage(){
   }
   if(empty) empty.style.display='none';
 
+  // Bulk delete toolbar
+  const bulkBar = document.getElementById('invBulkBar');
+  if(bulkBar) bulkBar.style.display='none';
+
   const invTypeColor={onetime:'#64748b',monthly:'#2e7d32',commission:'#7b1fa2'};
+  const _sh=(col,label,align='left')=>`<th style="padding:9px 12px;text-align:${align};font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0;cursor:pointer;user-select:none;white-space:nowrap" onclick="setInvSort('${col}')">${label}${_invSortIcon(col)}</th>`;
   let html=`<thead><tr style="background:#f8fafc">
-    <th style="padding:9px 12px;text-align:left;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">№</th>
-    <th style="padding:9px 12px;text-align:left;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Tərəfdaş</th>
-    <th style="padding:9px 12px;text-align:left;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Növ</th>
-    <th style="padding:9px 12px;text-align:left;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Dövriyyə</th>
-    <th style="padding:9px 12px;text-align:left;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Son ödəniş</th>
-    <th style="padding:9px 12px;text-align:right;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Məbləğ</th>
-    <th style="padding:9px 12px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">Status</th>
-    <th style="padding:9px 12px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0">İmzalı</th>
+    <th style="padding:9px 12px;width:28px;border-bottom:1px solid #e2e8f0">
+      <input type="checkbox" id="invCbAll" onchange="toggleAllInvCbs(this.checked)" style="accent-color:#1565c0">
+    </th>
+    ${_sh('number','№')}
+    ${_sh('partner','Tərəfdaş')}
+    ${_sh('type','Növ')}
+    ${_sh('period_from','Dövriyyə')}
+    ${_sh('due_date','Son ödəniş')}
+    ${_sh('total','Məbləğ','right')}
+    ${_sh('status','Status')}
     <th style="padding:9px 12px;font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0"></th>
   </tr></thead><tbody>`;
 
@@ -5195,6 +5932,9 @@ function renderInvoicesPage(){
       ? `<span title="${inv.signed_doc.name}" style="color:#2e7d32;cursor:pointer" onclick="openInvoiceDetail(${inv.id})"><i class="fa-solid fa-paperclip"></i> ${inv.signed_doc.name.length>12?inv.signed_doc.name.slice(0,12)+'…':inv.signed_doc.name}</span>`
       : `<span style="color:#e2e8f0;font-size:11px">—</span>`;
     html+=`<tr style="${isOverdue?'background:#fff5f5':''}">
+      <td style="padding:9px 12px">
+        <input type="checkbox" class="inv-cb" data-id="${inv.id}" onchange="updateInvBulkBar()" style="accent-color:#1565c0">
+      </td>
       <td style="padding:9px 12px;font-family:monospace;font-size:12px;color:#1565c0;font-weight:700">${inv.number}</td>
       <td style="padding:9px 12px;font-size:13px;font-weight:600">${p?.name||'—'}</td>
       <td style="padding:9px 12px;font-size:11px;color:${typeColor};font-weight:700">${INV_TYPE_LABELS[inv.type]||inv.type}</td>
@@ -5202,15 +5942,11 @@ function renderInvoicesPage(){
       <td style="padding:9px 12px;font-size:12px${isOverdue?';color:#e53935;font-weight:600':''}">${fmtDate(inv.due_date)}${isOverdue?' ⚠':''}</td>
       <td style="padding:9px 12px;text-align:right;font-weight:700;font-size:13px">${fmtMoney(inv.total)}</td>
       <td style="padding:9px 12px">${invBadge(inv.status)}</td>
-      <td style="padding:9px 12px;font-size:11px">${signedCell}</td>
       <td style="padding:9px 12px">
         <div style="display:flex;gap:4px">
-          <button class="btn btn-outline btn-sm" onclick="openInvoiceDetail(${inv.id})">
-            <i class="fa-solid fa-eye"></i>
-          </button>
-          ${inv.status==='draft'?`<button class="btn btn-warning btn-sm" onclick="openInvoiceForm(${inv.id})"><i class="fa-solid fa-pen"></i></button>`:''}
-          ${inv.status==='draft'?`<button class="btn btn-primary btn-sm" title="Göndər" onclick="markInvoiceSent(${inv.id})"><i class="fa-solid fa-paper-plane"></i></button>`:''}
-          ${inv.status==='sent'||inv.status==='overdue'?`<button class="btn btn-success btn-sm" onclick="markInvoicePaid(${inv.id})"><i class="fa-solid fa-circle-check"></i> Ödənildi</button>`:''}
+          <button class="btn btn-outline btn-sm" onclick="openInvoiceDetail(${inv.id})" title="Bax"><i class="fa-solid fa-eye"></i></button>
+          ${inv.status==='draft'?`<button class="btn btn-warning btn-sm" onclick="openInvoiceForm(${inv.id})" title="Düzəlt"><i class="fa-solid fa-pen"></i></button>`:''}
+          <button class="btn btn-outline btn-sm" onclick="generateDocx(${inv.partner_id},'akt',${inv.id})" title="AKT Yüklə" style="border-color:#1565c0;color:#1565c0"><i class="fa-solid fa-file-word"></i></button>
           <button class="btn btn-danger btn-sm" onclick="deleteInvoice(${inv.id})" title="Sil"><i class="fa-solid fa-trash"></i></button>
         </div>
       </td>
@@ -5417,11 +6153,11 @@ async function saveInvoice(){
   if(editId){
     const inv=INVOICES.find(i=>i.id===Number(editId));
     if(inv) Object.assign(inv,{partner_id:pid,type,issue_date:issue,due_date:due,notes,line_items,total});
+    if(sbOn()) sb('PATCH','invoices',{partner_id:pid,type,issue_date:issue,due_date:due,notes,line_items,total},`?id=eq.${editId}`).catch(()=>{});
     showToast('Faktura yeniləndi.');
   }else{
     const number=_nextInvNumber();
-    INVOICES.push({id:_nextInvId++,number,partner_id:pid,type,status:'draft',
-      issue_date:issue,due_date:due,notes,line_items,total});
+    _createInvoice({number,partner_id:pid,type,status:'draft',issue_date:issue,due_date:due,notes,line_items,total});
     showToast(`Faktura ${number} yaradıldı.`);
   }
   closeModal('invoiceFormModal');
@@ -5448,8 +6184,7 @@ function generateMonthlyInvoices(){
     const partner=PARTNERS.find(x=>x.id===pk.pid);
     const due=new Date(); due.setDate(due.getDate()+30);
     const pkgLabel=`PKG-${String(pk.id).padStart(3,'0')}`;
-    INVOICES.push({
-      id:_nextInvId++,
+    _createInvoice({
       number:_nextInvNumber(),
       partner_id:pk.pid,
       type:'monthly',
@@ -5478,12 +6213,20 @@ function generateMonthlyInvoices(){
 
 function markInvoiceSent(id){
   const inv=INVOICES.find(i=>i.id===id);
-  if(inv){inv.status='sent';showToast(`${inv.number} göndərilmiş kimi işarələndi.`);renderInvoicesPage();}
+  if(inv){
+    inv.status='sent';
+    if(sbOn()) sb('PATCH','invoices',{status:'sent'},`?id=eq.${id}`).catch(()=>{});
+    showToast(`${inv.number} göndərilmiş kimi işarələndi.`);renderInvoicesPage();
+  }
 }
 
 function markInvoicePaid(id){
   const inv=INVOICES.find(i=>i.id===id);
-  if(inv){inv.status='paid';showToast(`${inv.number} ödənilmiş kimi işarələndi.`);renderInvoicesPage();}
+  if(inv){
+    inv.status='paid';
+    if(sbOn()) sb('PATCH','invoices',{status:'paid'},`?id=eq.${id}`).catch(()=>{});
+    showToast(`${inv.number} ödənilmiş kimi işarələndi.`);renderInvoicesPage();
+  }
 }
 
 function openInvoiceDetail(id){
@@ -5564,10 +6307,9 @@ function openInvoiceDetail(id){
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       ${inv.status==='draft'?`<button class="btn btn-warning" onclick="closeModal('invoiceDetailModal');openInvoiceForm(${inv.id})"><i class="fa-solid fa-pen"></i> Düzəlt</button>`:''}
-      ${inv.status==='draft'?`<button class="btn btn-primary" onclick="markInvoiceSent(${inv.id});openInvoiceDetail(${inv.id})"><i class="fa-solid fa-paper-plane"></i> Göndər</button>`:''}
-      ${inv.status==='sent'||inv.status==='overdue'?`<button class="btn btn-success" onclick="markInvoicePaid(${inv.id});openInvoiceDetail(${inv.id})"><i class="fa-solid fa-circle-check"></i> Ödənildi</button>`:''}
-      <button class="btn btn-outline" onclick="showToast('Faktura şablonu hazırlanır — tezliklə.')">
-        <i class="fa-solid fa-file-word"></i> Faktura Yüklə
+      ${inv.status!=='paid'&&inv.status!=='cancelled'?`<button class="btn btn-success" onclick="markInvoicePaid(${inv.id});openInvoiceDetail(${inv.id})"><i class="fa-solid fa-circle-check"></i> Ödənildi</button>`:''}
+      <button class="btn btn-outline" onclick="generateDocx(${inv.partner_id},'akt',${inv.id})">
+        <i class="fa-solid fa-file-word"></i> AKT Yüklə
       </button>
       <button class="btn btn-danger" onclick="deleteInvoice(${inv.id},true)">
         <i class="fa-solid fa-trash"></i> Sil
