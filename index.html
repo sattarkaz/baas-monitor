@@ -312,6 +312,14 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
 </style>
 </head>
 <body>
+<!-- ── Global loading overlay ── -->
+<div id="globalLoader" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,0.45);backdrop-filter:blur(2px);align-items:center;justify-content:center;flex-direction:column;gap:14px">
+  <div style="width:52px;height:52px;border:4px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite"></div>
+  <div id="globalLoaderMsg" style="color:#fff;font-size:13px;font-weight:600;letter-spacing:.3px;text-shadow:0 1px 4px rgba(0,0,0,.5)">Yüklənir…</div>
+</div>
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
 
 <!-- ══════════════════════════════ LOGIN -->
 <div id="loginScreen" class="screen active">
@@ -759,6 +767,10 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
           </select>
         </div>
         <div class="form-field">
+          <label>Müqavilə №</label>
+          <input type="text" id="pf_contract_no" placeholder="məs. BaaS-0001/2026">
+        </div>
+        <div class="form-field">
           <label>Müqavilə Tarixi</label>
           <input type="date" id="pf_date">
         </div>
@@ -1176,10 +1188,16 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
     <input type="hidden" id="addWizardPid">
     <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
 
-      <!-- Date -->
-      <div class="form-field" style="margin:0">
-        <label>Əlavə Tarixi <span style="color:#e53935">*</span></label>
-        <input type="date" id="addWizardDate">
+      <!-- Number + Date row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-field" style="margin:0">
+          <label>Əlavə № <span style="font-weight:400;color:#94a3b8;font-size:10px">(boş = avtomatik)</span></label>
+          <input type="text" id="addWizardNumber" placeholder="məs. 3">
+        </div>
+        <div class="form-field" style="margin:0">
+          <label>Əlavə Tarixi <span style="color:#e53935">*</span></label>
+          <input type="date" id="addWizardDate">
+        </div>
       </div>
 
       <!-- Card packages + per-card price -->
@@ -1212,6 +1230,44 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
         <button class="btn btn-outline" onclick="closeModal('addendumWizardModal')">Ləğv et</button>
         <button class="btn btn-primary" onclick="saveAddendum()">
           <i class="fa-solid fa-file-signature"></i> Əlavə Yarat
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════ MODAL: Əlavəni Düzəlt -->
+<div id="editAddendumModal" class="modal-overlay">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-hdr">
+      <span><i class="fa-solid fa-pen"></i> Tarif Əlavəsini Düzəlt</span>
+      <button class="modal-close" onclick="closeModal('editAddendumModal')">✕</button>
+    </div>
+    <input type="hidden" id="editAddId">
+    <input type="hidden" id="editAddPid">
+    <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+      <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px;font-size:12px;color:#b45309">
+        <i class="fa-solid fa-circle-info"></i>
+        Yalnız nömrə, tarix və qeyd dəyişdirilir. Paket seçimləri dəyişmir.
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-field" style="margin:0">
+          <label>Əlavə № <span style="font-weight:400;color:#94a3b8;font-size:10px">(boş = avtomatik)</span></label>
+          <input type="text" id="editAddNumber" placeholder="məs. 3">
+        </div>
+        <div class="form-field" style="margin:0">
+          <label>Əlavə Tarixi <span style="color:#e53935">*</span></label>
+          <input type="date" id="editAddDate">
+        </div>
+      </div>
+      <div class="form-field" style="margin:0">
+        <label>Qeyd</label>
+        <input type="text" id="editAddNotes" placeholder="İstəyə bağlı qeyd">
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-outline" onclick="closeModal('editAddendumModal')">Ləğv et</button>
+        <button class="btn btn-primary" onclick="saveEditAddendum()">
+          <i class="fa-solid fa-check"></i> Yadda Saxla
         </button>
       </div>
     </div>
@@ -1626,9 +1682,12 @@ async function sb(method, table, body=null, query=''){
     'Content-Type':'application/json',
   };
   if(method==='POST'||method==='PATCH') h['Prefer']='return=representation';
-  const res=await fetch(url,{method,headers:h,body:body?JSON.stringify(body):undefined});
-  if(!res.ok){const t=await res.text();throw new Error(t);}
-  try{return await res.json();}catch{return null;}
+  showLoader(method==='GET'?'Yüklənir…':'Saxlanılır…');
+  try{
+    const res=await fetch(url,{method,headers:h,body:body?JSON.stringify(body):undefined});
+    if(!res.ok){const t=await res.text();throw new Error(t);}
+    try{return await res.json();}catch{return null;}
+  } finally { hideLoader(); }
 }
 
 // ── Field mappers (DB ↔ in-memory) ──
@@ -1962,6 +2021,23 @@ function ubar(pct){
 function pname(pid){return(PARTNERS.find(p=>p.id===pid)||{}).name||'';}
 function fmtDate(iso){if(!iso)return'—';const[y,m,d]=iso.split('-');return`${d}.${m}.${y}`;}
 function isoToday(){return new Date().toISOString().slice(0,10);}
+// ── Global loading overlay ──────────────────────────────────────────────────
+let _loaderCount = 0;
+function showLoader(msg = 'Yüklənir…') {
+  _loaderCount++;
+  const el = document.getElementById('globalLoader');
+  const msgEl = document.getElementById('globalLoaderMsg');
+  if (el) { el.style.display = 'flex'; }
+  if (msgEl) msgEl.textContent = msg;
+}
+function hideLoader() {
+  _loaderCount = Math.max(0, _loaderCount - 1);
+  if (_loaderCount === 0) {
+    const el = document.getElementById('globalLoader');
+    if (el) el.style.display = 'none';
+  }
+}
+
 function showToast(msg,ok=true){
   const t=document.getElementById('toast');
   document.getElementById('toastText').textContent=msg;
@@ -2738,6 +2814,8 @@ function openPartnerForm(pid=null){
     setV('pf_bank_name',p.bank_name); setV('pf_bank_code',p.bank_code);
     setV('pf_bank_account',p.bank_account);
     setV('pf_email',p.email); setV('pf_phone',p.phone); setV('pf_mgr',p.mgr);
+    const activeDeal=(DEALS||[]).find(d=>d.partner_id===pid&&d.status==='active');
+    setV('pf_contract_no', activeDeal?.contract_no||'');
   }else{
     ['pf_name','pf_voen','pf_legal_address','pf_signatory','pf_signatory_pos',
      'pf_bank_name','pf_bank_code','pf_bank_account','pf_email','pf_phone','pf_mgr']
@@ -2751,6 +2829,7 @@ function openPartnerForm(pid=null){
 async function savePartner(){
   const g=id=>document.getElementById(id).value.trim();
   const name=g('pf_name'); const date=g('pf_date'); const voen=g('pf_voen');
+  const contractNo=g('pf_contract_no');
   if(!name){showToast('Şirkət adı məcburidir!',false);return;}
   const fields={
     name, form:g('pf_form'), status:g('pf_status'),
@@ -2767,6 +2846,12 @@ async function savePartner(){
       if(sbOn()) await sb('PATCH','partners',fields,`?id=eq.${pid}`);
       const p=PARTNERS.find(x=>x.id===Number(pid));
       if(p) Object.assign(p,fields);
+      // Save contract_no to the active deal
+      const deal=(DEALS||[]).find(d=>d.partner_id===Number(pid)&&d.status==='active');
+      if(deal){
+        deal.contract_no=contractNo;
+        if(sbOn()) sb('PATCH','package_deals',{contract_no:contractNo},`?id=eq.${deal.id}`).catch(()=>{});
+      }
       showToast(`"${name}" yeniləndi.`);
     }else{
       let newId;
@@ -3442,6 +3527,9 @@ async function openDetailModal(pid){
               <div style="display:flex;gap:4px">
                 <button class="btn btn-outline btn-sm" title="Tarif Əlavəsini Yüklə" onclick="generateDocx(${pid},'annex',${a.id})">
                   <i class="fa-solid fa-download"></i>
+                </button>
+                <button class="btn btn-warning btn-sm" onclick="openEditAddendum(${a.id},${pid})" title="Düzəlt">
+                  <i class="fa-solid fa-pen"></i>
                 </button>
                 ${a.status!=='signed'?`<button class="btn btn-success btn-sm" onclick="signAddendum(${a.id},${pid})" title="İmzalandı kimi işarələ">
                   <i class="fa-solid fa-file-signature"></i>
@@ -5002,6 +5090,7 @@ async function generateDocx(pid, type, extraId=null){
   if (typeof JSZip === 'undefined' || typeof saveAs === 'undefined') {
     showToast('JSZip/FileSaver yüklənmir. İnternet bağlantısını yoxlayın.', false); return;
   }
+  showLoader('Sənəd hazırlanır…');
   const tplName = TEMPLATE_FILES[type];
   if (!tplName) { showToast(`Naməlum şablon növü: ${type}`, false); return; }
 
@@ -5028,9 +5117,13 @@ async function generateDocx(pid, type, extraId=null){
     // Use the addendum's own fee package (first listed)
     const fpId = (addendum.fee_package_ids || [])[0];
     if (fpId) feePkg = (FEE_PACKAGES[pid] || []).find(fp => fp.id === fpId) || feePkg;
-    // Sequential annex number among this partner's addendums (1-based)
-    const sorted = ADDENDUMS.filter(a => a.partner_id === pid).sort((a,b) => a.id - b.id);
-    annex_no_override = sorted.findIndex(a => a.id === extraId) + 1;
+    // Use custom_no if set, otherwise sequential index among this partner's addendums
+    if (addendum.custom_no) {
+      annex_no_override = addendum.custom_no;
+    } else {
+      const sorted = ADDENDUMS.filter(a => a.partner_id === pid).sort((a,b) => a.id - b.id);
+      annex_no_override = sorted.findIndex(a => a.id === extraId) + 1;
+    }
   }
 
   // Packages referenced by this addendum (for card fees + monthly fees rows)
@@ -5100,6 +5193,8 @@ async function generateDocx(pid, type, extraId=null){
   } catch (e) {
     showToast(`Sənəd yaradılarkən xəta: ${e.message}`, false);
     console.error(e);
+  } finally {
+    hideLoader();
   }
 }
 
@@ -5117,6 +5212,7 @@ function refreshAll(){
 async function signAddendum(addId, pid){
   const a = ADDENDUMS.find(x => x.id === addId);
   if(!a) return;
+  showLoader('İmzalanır…');
   const today = isoToday();
   let invCreated = 0;
 
@@ -5221,6 +5317,7 @@ async function signAddendum(addId, pid){
 
   const label = addendumLabel(addId);
   const invMsg = invCreated > 0 ? ` ${invCreated} faktura avtomatik yaradıldı.` : ' Faktura yaradılmadı (artıq mövcuddur).';
+  hideLoader();
   showToast(`${label} imzalandı.${invMsg}`);
   openDetailModal(pid);
 }
@@ -5309,8 +5406,8 @@ function openCalcInline(pid){
   el.dataset.pid=pid;
 
   const now=new Date();
-  const prevM=now.getMonth()===0?11:now.getMonth()-1;
-  const prevY=now.getMonth()===0?now.getFullYear()-1:now.getFullYear();
+  const prevM=now.getMonth();       // current month (0-indexed)
+  const prevY=now.getFullYear();    // current year
 
   const monthOpts=(selM)=>_AZ_MONTHS_CALC.map((n,i)=>
     `<option value="${i+1}"${i===selM?'selected':''}>${n}</option>`).join('');
@@ -5606,10 +5703,11 @@ function createCommissionInvoiceFromCalc(pid, from, to, cnt, vol, commission){
 // ── Batch Commission Invoice Generator ──
 function openCommissionBatchModal(){
   const now=new Date();
-  const prev=new Date(now.getFullYear(), now.getMonth()-1, 1);
-  const prevEnd=new Date(now.getFullYear(), now.getMonth(), 0);
-  document.getElementById('commBatchFrom').value=prev.toISOString().slice(0,10);
-  document.getElementById('commBatchTo').value=prevEnd.toISOString().slice(0,10);
+  const _li=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const curStart=new Date(now.getFullYear(), now.getMonth(), 1);
+  const curEnd  =new Date(now.getFullYear(), now.getMonth()+1, 0);
+  document.getElementById('commBatchFrom').value=_li(curStart);
+  document.getElementById('commBatchTo').value=_li(curEnd);
   // Auto-run preview for the default (last month) dates so modal opens populated
   renderCommissionBatchPreview();
   openModal('commissionBatchModal');
@@ -5650,7 +5748,7 @@ function renderCommissionBatchPreview(){
   if(!rows.length){container.innerHTML='<div style="color:#94a3b8;padding:12px">Aktiv komisyon paketi olan tərəfdaş yoxdur.</div>';return;}
   container.innerHTML=rows.map((r,i)=>`
     <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9">
-      <input type="checkbox" id="cb_batch_${i}" value="${i}" ${r.already?'disabled checked':'checked'} style="accent-color:#7b1fa2;width:15px;height:15px">
+      <input type="checkbox" id="cb_batch_${i}" value="${i}" ${r.already?'disabled checked':''} style="accent-color:#7b1fa2;width:15px;height:15px">
       <div style="flex:1;font-size:12px">
         <div style="font-weight:700;color:#334155">${r.p.name}</div>
         <div style="color:#64748b;font-size:11px">${fmtN(r.txnCount)} əməliyyat · ${fmtMoney(r.txnVol)} həcm · ${r.rate}% dərəcə</div>
@@ -5753,6 +5851,7 @@ function saveAddendum(){
   const pid=Number(document.getElementById('addWizardPid').value);
   const date=document.getElementById('addWizardDate').value;
   const notes=document.getElementById('addWizardNotes').value.trim();
+  const customNo=(document.getElementById('addWizardNumber')?.value||'').trim();
   const checkedPkgs=[...document.querySelectorAll('#addWizardPkgs .aw-pkg-cb:checked')].map(c=>Number(c.value));
   const checkedFps=[...document.querySelectorAll('#addWizardFps .aw-fp-cb:checked')].map(c=>Number(c.value));
   if(!date){showToast('Tarix seçin.',false);return;}
@@ -5769,15 +5868,52 @@ function saveAddendum(){
     package_ids:checkedPkgs,
     fee_package_ids:checkedFps,
     card_terms:cardTerms,
+    custom_no:customNo||null,
     notes, status:'created', created_at:isoToday()
   });
   if(sbOn()) sb('POST','addendums',{
     partner_id:pid,date,package_ids:checkedPkgs,
     fee_package_ids:checkedFps,card_terms:cardTerms,
+    custom_no:customNo||null,
     notes,status:'created'
   }).catch(e=>console.warn('Addendum persist:',e.message));
   closeModal('addendumWizardModal');
   showToast(`${addendumLabel(id)} uğurla yaradıldı.`);
+  openDetailModal(pid);
+}
+
+// ── Edit existing addendum (number / date / notes only) ──────────────────
+function openEditAddendum(addId, pid){
+  const a = ADDENDUMS.find(x => x.id === addId);
+  if(!a){ showToast('Əlavə tapılmadı.',false); return; }
+  document.getElementById('editAddId').value   = addId;
+  document.getElementById('editAddPid').value  = pid;
+  document.getElementById('editAddNumber').value = a.custom_no || '';
+  document.getElementById('editAddDate').value   = a.date || '';
+  document.getElementById('editAddNotes').value  = a.notes || '';
+  openModal('editAddendumModal');
+  initDatePickerConfirm(document.getElementById('editAddendumModal'));
+}
+
+async function saveEditAddendum(){
+  const addId = Number(document.getElementById('editAddId').value);
+  const pid   = Number(document.getElementById('editAddPid').value);
+  const customNo = (document.getElementById('editAddNumber').value||'').trim();
+  const date     = document.getElementById('editAddDate').value.trim();
+  const notes    = document.getElementById('editAddNotes').value.trim();
+  if(!date){ showToast('Tarix seçin.',false); return; }
+  const a = ADDENDUMS.find(x => x.id === addId);
+  if(!a){ showToast('Əlavə tapılmadı.',false); return; }
+  a.custom_no = customNo || null;
+  a.date      = date;
+  a.notes     = notes;
+  if(sbOn()){
+    try{
+      await sb('PATCH','addendums',{custom_no:customNo||null,date,notes},`id=eq.${addId}`);
+    } catch(e){ console.warn('Edit addendum persist:',e.message); }
+  }
+  closeModal('editAddendumModal');
+  showToast('Əlavə məlumatları yeniləndi.');
   openDetailModal(pid);
 }
 
@@ -5945,7 +6081,7 @@ function renderInvoicesPage(){
       <td style="padding:9px 12px">
         <div style="display:flex;gap:4px">
           <button class="btn btn-outline btn-sm" onclick="openInvoiceDetail(${inv.id})" title="Bax"><i class="fa-solid fa-eye"></i></button>
-          ${inv.status==='draft'?`<button class="btn btn-warning btn-sm" onclick="openInvoiceForm(${inv.id})" title="Düzəlt"><i class="fa-solid fa-pen"></i></button>`:''}
+          <button class="btn btn-warning btn-sm" onclick="openInvoiceForm(${inv.id})" title="Düzəlt"><i class="fa-solid fa-pen"></i></button>
           <button class="btn btn-outline btn-sm" onclick="generateDocx(${inv.partner_id},'akt',${inv.id})" title="AKT Yüklə" style="border-color:#1565c0;color:#1565c0"><i class="fa-solid fa-file-word"></i></button>
           <button class="btn btn-danger btn-sm" onclick="deleteInvoice(${inv.id})" title="Sil"><i class="fa-solid fa-trash"></i></button>
         </div>
@@ -5995,8 +6131,14 @@ function openInvoiceForm(editId=null){
     <div class="form-section">Faktura Məlumatı</div>
     <div class="form-grid form-grid-2">
       <div class="form-field">
-        <label>Tərəfdaş <span class="req">*</span></label>
-        <select id="invf_pid" onchange="invLoadSuggestions()">${pOpts}</select>
+        <label>Faktura № <span style="font-weight:400;color:#94a3b8;font-size:10px">(boş buraxsanız avtomatik)</span></label>
+        <input type="text" id="invf_number" placeholder="${_nextInvNumber()}" value="${inv?.number||''}">
+      </div>
+      <div class="form-field" style="display:flex;align-items:flex-end">
+        <div style="width:100%">
+          <label>Tərəfdaş <span class="req">*</span></label>
+          <select id="invf_pid" onchange="invLoadSuggestions()">${pOpts}</select>
+        </div>
       </div>
       <div class="form-field">
         <label>Faktura Növü <span class="req">*</span></label>
@@ -6146,17 +6288,19 @@ async function saveInvoice(){
   const issue=document.getElementById('invf_issue')?.value;
   const due=document.getElementById('invf_due')?.value;
   const notes=document.getElementById('invf_notes')?.value.trim()||'';
+  const manualNum=(document.getElementById('invf_number')?.value||'').trim();
   if(!pid||!issue||!due){showToast('Tərəfdaş, tarix sahələri məcburidir!',false);return;}
   const line_items=getInvLineItems();
   if(!line_items.length){showToast('Ən azı bir maddə əlavə edin!',false);return;}
   const total=line_items.reduce((s,li)=>s+li.amount,0);
   if(editId){
     const inv=INVOICES.find(i=>i.id===Number(editId));
-    if(inv) Object.assign(inv,{partner_id:pid,type,issue_date:issue,due_date:due,notes,line_items,total});
-    if(sbOn()) sb('PATCH','invoices',{partner_id:pid,type,issue_date:issue,due_date:due,notes,line_items,total},`?id=eq.${editId}`).catch(()=>{});
+    const number=manualNum||inv?.number||_nextInvNumber();
+    if(inv) Object.assign(inv,{number,partner_id:pid,type,issue_date:issue,due_date:due,notes,line_items,total});
+    if(sbOn()) sb('PATCH','invoices',{number,partner_id:pid,type,issue_date:issue,due_date:due,notes,line_items,total},`?id=eq.${editId}`).catch(()=>{});
     showToast('Faktura yeniləndi.');
   }else{
-    const number=_nextInvNumber();
+    const number=manualNum||_nextInvNumber();
     _createInvoice({number,partner_id:pid,type,status:'draft',issue_date:issue,due_date:due,notes,line_items,total});
     showToast(`Faktura ${number} yaradıldı.`);
   }
@@ -6306,7 +6450,7 @@ function openInvoiceDetail(id){
         </div>`}
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      ${inv.status==='draft'?`<button class="btn btn-warning" onclick="closeModal('invoiceDetailModal');openInvoiceForm(${inv.id})"><i class="fa-solid fa-pen"></i> Düzəlt</button>`:''}
+      <button class="btn btn-warning" onclick="closeModal('invoiceDetailModal');openInvoiceForm(${inv.id})"><i class="fa-solid fa-pen"></i> Düzəlt</button>
       ${inv.status!=='paid'&&inv.status!=='cancelled'?`<button class="btn btn-success" onclick="markInvoicePaid(${inv.id});openInvoiceDetail(${inv.id})"><i class="fa-solid fa-circle-check"></i> Ödənildi</button>`:''}
       <button class="btn btn-outline" onclick="generateDocx(${inv.partner_id},'akt',${inv.id})">
         <i class="fa-solid fa-file-word"></i> AKT Yüklə
