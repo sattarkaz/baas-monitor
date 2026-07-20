@@ -36,6 +36,8 @@ body{font-family:'Inter',sans-serif;font-size:14px;background:#f0f4f8;color:#1a2
 .login-error{background:#fce4ec;color:#c62828;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
 .btn-login{width:100%;background:linear-gradient(135deg,#009688,#00695c);color:#fff;border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .18s;margin-top:2px}
 .btn-login:hover{opacity:.9}
+.login-remember{display:flex;align-items:center;gap:8px;margin:12px 0 0;font-size:13px;color:#64748b;cursor:pointer;user-select:none;}
+.login-remember input{width:15px;height:15px;accent-color:#009688;cursor:pointer;flex-shrink:0;}
 
 /* APP SHELL */
 #appScreen{min-height:100vh;flex-direction:row;width:100%}
@@ -345,6 +347,9 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
         <div class="input-wrap"><i class="fa-solid fa-lock"></i>
           <input type="password" id="loginPass" placeholder="••••••••"></div>
       </div>
+      <label class="login-remember">
+        <input type="checkbox" id="loginRemember"> Stay signed-in
+      </label>
       <button class="btn-login" onclick="doLogin()">
         <i class="fa-solid fa-right-to-bracket"></i>&nbsp; Daxil ol
       </button>
@@ -2157,6 +2162,46 @@ function showToast(msg,ok=true){
 }
 
 // ═══════════════════════ AUTH
+const BAAS_SESSION_KEY = 'baas_session';
+
+async function checkSavedSession(){
+  try{
+    const raw = localStorage.getItem(BAAS_SESSION_KEY);
+    if(!raw) return false;
+    const sess = JSON.parse(raw);
+    if(!sess || !sess.userId){
+      localStorage.removeItem(BAAS_SESSION_KEY);
+      return false;
+    }
+    // Verify user still exists and is active
+    if(sbOn()){
+      const rows = await sb('GET','sys_users',null,`?id=eq.${sess.userId}&status=eq.active&limit=1`);
+      if(!rows || !rows.length){
+        localStorage.removeItem(BAAS_SESSION_KEY);
+        return false;
+      }
+    }
+    // Restore UI state
+    currentRole = sess.role;
+    _auditUser  = sess.name;
+    document.getElementById('userName').textContent   = sess.name;
+    document.getElementById('userRole').textContent   = sess.roleLabel;
+    document.getElementById('userAvatar').textContent = sess.initials;
+    const adminDisplay = currentRole==='administrator' ? 'flex' : 'none';
+    document.getElementById('navUsers').style.display      = adminDisplay;
+    document.getElementById('navProducts').style.display   = adminDisplay;
+    document.getElementById('navAuditLog').style.display   = adminDisplay;
+    document.getElementById('loginScreen').classList.remove('active');
+    document.getElementById('appScreen').classList.add('active');
+    _auditLog('LOGIN','user',null,sess.name,{role:sess.role,auto:true});
+    initApp();
+    return true;
+  }catch(e){
+    localStorage.removeItem(BAAS_SESSION_KEY);
+    return false;
+  }
+}
+
 async function doLogin(){
   const u=document.getElementById('loginUser').value.trim();
   const p=document.getElementById('loginPass').value;
@@ -2175,7 +2220,7 @@ async function doLogin(){
         // Build initials from first letters of each word (max 2)
         const initials=name.split(/\s+/).map(w=>w[0]||'').join('').substring(0,2).toUpperCase();
         const roleLabels={administrator:'Administrator',manager:'Partner Manager',analyst:'Analyst',viewer:'Viewer'};
-        usr={pass:p,name,role,initials,roleLabel:roleLabels[role]||role};
+        usr={id:r.id,pass:p,name,role,initials,roleLabel:roleLabels[role]||role};
       }
     }catch(e){
       console.warn('Supabase auth error:',e.message);
@@ -2198,6 +2243,16 @@ async function doLogin(){
     document.getElementById('loginScreen').classList.remove('active');
     document.getElementById('appScreen').classList.add('active');
     _auditLog('LOGIN','user',null,usr.name,{role:usr.role});
+    // Save session if "remember me" checked
+    if(document.getElementById('loginRemember').checked && usr.id){
+      localStorage.setItem(BAAS_SESSION_KEY, JSON.stringify({
+        userId:    usr.id,
+        name:      usr.name,
+        role:      usr.role,
+        initials:  usr.initials,
+        roleLabel: usr.roleLabel,
+      }));
+    }
     initApp();
   }else{
     document.getElementById('loginError').style.display='flex';
@@ -2206,12 +2261,17 @@ async function doLogin(){
 function doLogout(){
   _auditLog('LOGOUT','user',null,_auditUser,null);
   _auditUser='system';
+  localStorage.removeItem(BAAS_SESSION_KEY);
   document.getElementById('appScreen').classList.remove('active');
   document.getElementById('loginScreen').classList.add('active');
   document.getElementById('loginUser').value='';
   document.getElementById('loginPass').value='';
+  document.getElementById('loginRemember').checked=false;
 }
 document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+
+// Auto-login from saved session on page load
+checkSavedSession();
 
 // ═══════════════════════ NAV
 const PAGE_TITLES={
