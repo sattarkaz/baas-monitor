@@ -319,6 +319,11 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
   <div style="width:52px;height:52px;border:4px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite"></div>
   <div id="globalLoaderMsg" style="color:#fff;font-size:13px;font-weight:600;letter-spacing:.3px;text-shadow:0 1px 4px rgba(0,0,0,.5)">Yüklənir…</div>
 </div>
+<!-- ── Section (body-only) loading overlay: covers content, leaves the sidebar clickable ── -->
+<div id="sectionLoader" style="display:none;position:fixed;top:0;left:240px;right:0;bottom:0;z-index:90;background:rgba(248,250,252,0.72);backdrop-filter:blur(1.5px);align-items:center;justify-content:center;flex-direction:column;gap:12px">
+  <div style="width:44px;height:44px;border:4px solid rgba(21,101,192,0.18);border-top-color:#1565c0;border-radius:50%;animation:spin 0.7s linear infinite"></div>
+  <div id="sectionLoaderMsg" style="color:#1565c0;font-size:13px;font-weight:600">Yüklənir…</div>
+</div>
 <style>
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>
@@ -662,6 +667,7 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
       <!-- Bulk delete bar -->
       <div id="invBulkBar" style="display:none;background:#fce4ec;border:1px solid #f48fb1;border-radius:8px;padding:10px 16px;margin-bottom:12px;display:none;align-items:center;gap:12px">
         <span id="invBulkCount" style="font-size:13px;font-weight:600;color:#c62828"></span>
+        <button class="btn btn-primary btn-sm" onclick="bulkDownloadInvoices()"><i class="fa-solid fa-file-arrow-down"></i> Sənədləri Yüklə</button>
         <button class="btn btn-danger btn-sm" onclick="bulkDeleteInvoices()"><i class="fa-solid fa-trash"></i> Seçilənləri Sil</button>
         <button class="btn btn-outline btn-sm" onclick="toggleAllInvCbs(false)">Seçimi Ləğv Et</button>
       </div>
@@ -1351,6 +1357,26 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
   </div>
 </div>
 
+<!-- ══════════════════════════════ MODAL: Bulk Document Download -->
+<div id="bulkDlModal" class="modal-overlay">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-hdr">
+      <span><i class="fa-solid fa-file-arrow-down"></i> Sənədləri Yüklə</span>
+      <button class="modal-close" id="bulkDlClose" onclick="closeModal('bulkDlModal')">✕</button>
+    </div>
+    <div style="padding:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <span style="font-size:13px;color:#64748b">Hər sənəd şablondan formalaşdırılıb yüklənir.</span>
+        <span id="bulkDlProgress" style="font-size:13px;font-weight:700;color:#1565c0">0 / 0</span>
+      </div>
+      <div id="bulkDlList" style="display:flex;flex-direction:column;gap:6px;max-height:52vh;overflow-y:auto"></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:16px">
+        <button class="btn btn-outline" id="bulkDlDone" onclick="closeModal('bulkDlModal')">Bağla</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════ MODAL: Per-Partner Commission Calculator -->
 <div id="commissionCalcModal" class="modal-overlay">
   <div class="modal-box" style="max-width:500px">
@@ -1759,12 +1785,15 @@ async function sb(method, table, body=null, query=''){
     'Content-Type':'application/json',
   };
   if(method==='POST'||method==='PATCH') h['Prefer']='return=representation';
-  showLoader(method==='GET'?'Yüklənir…':'Saxlanılır…');
+  // During a page navigation the section loader is shown instead of the
+  // full-screen one (so the sidebar stays clickable).
+  const _useGlobal = (_navLoadDepth === 0);
+  if(_useGlobal) showLoader(method==='GET'?'Yüklənir…':'Saxlanılır…');
   try{
     const res=await fetch(url,{method,headers:h,body:body?JSON.stringify(body):undefined});
     if(!res.ok){const t=await res.text();throw new Error(t);}
     try{return await res.json();}catch{return null;}
-  } finally { hideLoader(); }
+  } finally { if(_useGlobal) hideLoader(); }
 }
 
 // ── Audit logging ──────────────────────────────────────────────────────────
@@ -1916,22 +1945,55 @@ function _createInvoice(data){
   return inv;
 }
 
-// ── Load all data from Supabase ──
-async function loadData(){
+// ── Load data from Supabase ──
+// Heavy tables (cards/transactions) change ~once a day, so they load once and
+// are cached; light tables always refresh so edits show immediately.
+//   loadData()                                   → full (light + cards + txns)
+//   loadData({})                                 → light tables only
+//   loadData({cards:true})                       → light + cards
+//   loadData({txns:true})                        → light + transactions
+//   loadData({cards:true,txns:true,force:true})  → everything, ignore cache
+let _cardsLoaded = false, _txnsLoaded = false;
+async function loadData(opts){
   if(!sbOn()) return; // no Supabase config → keep in-memory defaults
+  const _full     = (opts === undefined);
+  const _o        = opts || {};
+  const _force    = !!_o.force;
+  const _wantCards= _full || !!_o.cards;
+  const _wantTxns = _full || !!_o.txns;
   showSyncBadge('Yüklənir…','#f57c00');
   try{
-    // Core tables — must succeed
-    const [partners,pkgs,users,docs]=await Promise.all([
-      sb('GET','partners',null,'?order=id'),
-      sb('GET','packages',null,'?order=id'),
-      sb('GET','sys_users',null,'?order=id'),
-      sb('GET','partner_docs',null,'?order=id'),
-    ]);
+    // Fire EVERY needed request in parallel — one round-trip of latency, not N.
+    const _fail=(name,extra)=>e=>{ console.warn(`${name}:`, e.message); if(extra) extra(); return null; };
+    const doCards = _wantCards && (_force || !_cardsLoaded);
+    const doTxns  = _wantTxns  && (_force || !_txnsLoaded);
+    let _txnFrom=null;
+    if(doTxns){ const c=new Date(); c.setDate(c.getDate()-90); _txnFrom=c.toISOString().slice(0,10); }
+
+    const [partners,pkgs,users,docs,fps,mccRows,cntryRows,dealRows,ptRows,invRows,addRows,cardRows,txnRows]=
+      await Promise.all([
+        sb('GET','partners',null,'?order=id').catch(_fail('partners')),
+        sb('GET','packages',null,'?order=id').catch(_fail('packages')),
+        sb('GET','sys_users',null,'?order=id').catch(_fail('sys_users')),
+        sb('GET','partner_docs',null,'?order=id').catch(_fail('partner_docs')),
+        sb('GET','fee_packages',null,'?order=id').catch(_fail('fee_packages', showMigrationBanner)),
+        sb('GET','mcc_codes',null,'?select=mcc_code,name_az,name_en&order=mcc_code').catch(_fail('mcc_codes')),
+        sb('GET','country_labels',null,'?select=code,name,flag&order=code').catch(_fail('country_labels')),
+        sb('GET','package_deals',null,'?order=id').catch(_fail('package_deals')),
+        sb('GET','prod_types',null,'?order=code').catch(_fail('prod_types')),
+        sb('GET','invoices',null,'?order=id').catch(_fail('invoices')),
+        sb('GET','addendums',null,'?order=id').catch(_fail('addendums')),
+        doCards ? sb('GET','cards',null,'?order=issue_date.desc&limit=50000').catch(_fail('cards'))
+                : Promise.resolve(undefined),
+        doTxns  ? sb('GET','transactions',null,`?op_date=gte.${_txnFrom}&order=op_date.desc&limit=50000`).catch(_fail('transactions'))
+                : Promise.resolve(undefined),
+      ]);
+
+    // ── Light tables ──
     if(partners?.length) PARTNERS=partners.map(partnerFromDb);
     if(pkgs?.length)     PACKAGES=pkgs.map(pkgFromDb);
     if(users?.length)    SYS_USERS=users.map(userFromDb);
-    // Rebuild PARTNER_DOCS keyed by partner id
+
     PARTNER_DOCS={};
     PARTNERS.forEach(p=>PARTNER_DOCS[p.id]=[]);
     (docs||[]).forEach(d=>{
@@ -1940,109 +2002,55 @@ async function loadData(){
       PARTNER_DOCS[pid].push(docFromDb(d));
     });
 
-    // fee_packages — optional: table may not exist yet (migration v2 not run)
-    let fps=[];
-    try{
-      fps=await sb('GET','fee_packages',null,'?order=id')||[];
-    }catch(e){
-      // Table missing — show one-time banner, keep in-memory defaults
-      console.warn('fee_packages not found:',e.message);
-      showMigrationBanner();
-    }
-    // Rebuild FEE_PACKAGES keyed by partner id
     FEE_PACKAGES={};
     PARTNERS.forEach(p=>FEE_PACKAGES[p.id]=[]);
-    fps.forEach(fp=>{
+    (fps||[]).forEach(fp=>{
       const pid=Number(fp.partner_id);
       if(!FEE_PACKAGES[pid]) FEE_PACKAGES[pid]=[];
       FEE_PACKAGES[pid].push(feePackageFromDb(fp));
     });
 
-    // mcc_codes — name lookup only; populate MCC_LABELS map
-    try{
-      const mccRows=await sb('GET','mcc_codes',null,'?select=mcc_code,name_az,name_en&order=mcc_code')||[];
-      if(mccRows.length) MCC_LABELS=buildMccLabels(mccRows);
-    }catch(e){
-      console.warn('mcc_codes not found, run mcc_codes migration:',e.message);
+    if(mccRows?.length)   MCC_LABELS=buildMccLabels(mccRows);
+    if(cntryRows?.length) CTRY_LABELS=buildCtryLabels(cntryRows);
+
+    DEALS=(dealRows||[]).map(dealFromDb);
+
+    PROD_TYPES=(ptRows||[]).map(prodTypeFromDb);
+    PROD_TYPE_MAP={};
+    PROD_TYPES.forEach(pt=>{ if(pt.partner_id) PROD_TYPE_MAP[pt.code]=pt.partner_id; });
+
+    if(invRows?.length){
+      INVOICES=invRows.map(r=>({
+        id:Number(r.id),number:r.number||'',partner_id:Number(r.partner_id),
+        type:r.type||'manual',status:r.status||'draft',
+        issue_date:r.issue_date||'',due_date:r.due_date||'',
+        period_from:r.period_from||null,period_to:r.period_to||null,
+        notes:r.notes||'',line_items:r.line_items||[],
+        total:parseFloat(r.total)||0,signed_doc:r.signed_doc||null
+      }));
+      _nextInvId=Math.max(...INVOICES.map(i=>i.id))+1;
     }
 
-    // country_labels — name/flag lookup only; populate CTRY_LABELS map
-    try{
-      const cntryRows=await sb('GET','country_labels',null,'?select=code,name,flag&order=code')||[];
-      if(cntryRows.length) CTRY_LABELS=buildCtryLabels(cntryRows);
-    }catch(e){
-      console.warn('country_labels not found, run country_labels migration:',e.message);
+    if(addRows?.length){
+      ADDENDUMS=addRows.map(r=>({
+        id:Number(r.id),partner_id:Number(r.partner_id),
+        date:r.date||'',package_ids:r.package_ids||[],
+        fee_package_ids:r.fee_package_ids||[],card_terms:r.card_terms||{},
+        notes:r.notes||'',status:r.status||'created',created_at:r.created_at||''
+      }));
+      _nextAddendumId=Math.max(...ADDENDUMS.map(a=>a.id))+1;
     }
 
-
-    // ── package_deals (migration v8) — parent of packages/fee_packages ──
-    try{
-      const dealRows = await sb('GET','package_deals',null,'?order=id')||[];
-      DEALS = dealRows.map(dealFromDb);
-    }catch(e){
-      console.warn('package_deals not found, run migration v8:', e.message);
-      DEALS = [];
+    // ── Heavy tables (only requested when the page needs them; cached after) ──
+    if(doCards && cardRows!==null){
+      if(cardRows && cardRows.length) CARDS=cardRows.map(cardFromDb);
+      _cardsLoaded=true;
+      invalidatePkgStatsCache();
     }
-
-    // ── DWH-sourced tables (migration v6) ───────────────────────────────
-    // prod_types — joins DWH PROD_TYPE codes to our partners table
-    try{
-      const ptRows = await sb('GET','prod_types',null,'?order=code')||[];
-      if(ptRows.length) PROD_TYPES = ptRows.map(prodTypeFromDb);
-      PROD_TYPE_MAP = {};
-      PROD_TYPES.forEach(pt => { if(pt.partner_id) PROD_TYPE_MAP[pt.code] = pt.partner_id; });
-    }catch(e){
-      console.warn('prod_types not found, run migration v6:', e.message);
+    if(doTxns && txnRows!==null){
+      if(txnRows && txnRows.length) TRANSACTIONS=txnRows.map(txnFromDb);
+      _txnsLoaded=true;
     }
-
-    // cards — from DWH (all rows; tune the limit if your card volume is very large)
-    try{
-      const cardRows = await sb('GET','cards',null,'?order=issue_date.desc&limit=50000')||[];
-      if(cardRows.length) CARDS = cardRows.map(cardFromDb);
-      invalidatePkgStatsCache(); // bust cache whenever CARDS are refreshed
-    }catch(e){
-      console.warn('cards not found, run migration v6:', e.message);
-    }
-
-    // transactions — last 90 days (covers all UI windows + commission calculations)
-    try{
-      const txnCutoff=new Date(); txnCutoff.setDate(txnCutoff.getDate()-90);
-      const txnFrom=txnCutoff.toISOString().slice(0,10);
-      const txnRows = await sb('GET','transactions',null,`?op_date=gte.${txnFrom}&order=op_date.desc&limit=50000`)||[];
-      if(txnRows.length) TRANSACTIONS = txnRows.map(txnFromDb);
-    }catch(e){
-      console.warn('transactions not found, run migration v6:', e.message);
-    }
-
-    // invoices
-    try{
-      const invRows=await sb('GET','invoices',null,'?order=id')||[];
-      if(invRows.length){
-        INVOICES=invRows.map(r=>({
-          id:Number(r.id),number:r.number||'',partner_id:Number(r.partner_id),
-          type:r.type||'manual',status:r.status||'draft',
-          issue_date:r.issue_date||'',due_date:r.due_date||'',
-          period_from:r.period_from||null,period_to:r.period_to||null,
-          notes:r.notes||'',line_items:r.line_items||[],
-          total:parseFloat(r.total)||0,signed_doc:r.signed_doc||null
-        }));
-        _nextInvId=Math.max(...INVOICES.map(i=>i.id))+1;
-      }
-    }catch(e){console.warn('invoices table not found, run schema_migration.sql:',e.message);}
-
-    // addendums
-    try{
-      const addRows=await sb('GET','addendums',null,'?order=id')||[];
-      if(addRows.length){
-        ADDENDUMS=addRows.map(r=>({
-          id:Number(r.id),partner_id:Number(r.partner_id),
-          date:r.date||'',package_ids:r.package_ids||[],
-          fee_package_ids:r.fee_package_ids||[],card_terms:r.card_terms||{},
-          notes:r.notes||'',status:r.status||'created',created_at:r.created_at||''
-        }));
-        _nextAddendumId=Math.max(...ADDENDUMS.map(a=>a.id))+1;
-      }
-    }catch(e){console.warn('addendums table not found, run schema_migration.sql:',e.message);}
 
     showSyncBadge('Sinxronizasiya: OK','#2e7d32');
   }catch(e){
@@ -2050,6 +2058,15 @@ async function loadData(){
     showToast('Supabase yükləmə xətası: '+e.message,false);
     console.error(e);
   }
+}
+
+// Load heavy tables on demand for features that need them (commission
+// calculators, product discovery) without re-fetching if already cached.
+async function ensureHeavy(need){
+  const want={};
+  if(need && need.cards && !_cardsLoaded) want.cards=true;
+  if(need && need.txns  && !_txnsLoaded)  want.txns=true;
+  if(want.cards || want.txns) await loadData(want);
 }
 
 function showMigrationBanner(){
@@ -2149,6 +2166,17 @@ function hideLoader() {
     const el = document.getElementById('globalLoader');
     if (el) el.style.display = 'none';
   }
+}
+
+// ── Section-scoped loader (page navigation) — leaves the sidebar usable ──
+let _navLoadDepth = 0;  // >0 while a page navigation is fetching (suppresses the full-screen loader)
+let _navToken = 0;      // bumps on each navigation; stale loads check it before rendering
+function showSectionLoader(msg='Yüklənir…'){
+  const m=document.getElementById('sectionLoaderMsg'); if(m) m.textContent=msg;
+  const el=document.getElementById('sectionLoader'); if(el) el.style.display='flex';
+}
+function hideSectionLoader(){
+  const el=document.getElementById('sectionLoader'); if(el) el.style.display='none';
 }
 
 function showToast(msg,ok=true){
@@ -2284,15 +2312,15 @@ const PAGE_TITLES={
   products:'Məhsul Növləri / Product Types',
   auditlog:'Audit Log / İstifadəçi Hərəkətləri'
 };
-async function showPage(id){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  document.getElementById('page-'+id).classList.add('active');
-  document.querySelector(`[data-page="${id}"]`).classList.add('active');
-  document.getElementById('topbarTitle').textContent=PAGE_TITLES[id];
-  // Refresh from Supabase, then re-render the destination so the user always
-  // sees the latest data (admins editing in another tab will become visible).
-  await loadData();
+// Which heavy tables each page actually needs. Pages not listed get light
+// tables only (partners, packages, invoices, etc.) — no cards/transactions.
+const PAGE_HEAVY = {
+  dashboard:    { cards:true, txns:true },
+  partners:     { cards:true },
+  transactions: { txns:true },
+  txnlist:      { txns:true }
+};
+function renderPageBody(id){
   if (id === 'dashboard')        renderDashboard();
   else if (id === 'partners')    renderPartnersPage();
   else if (id === 'transactions'){ initTxnFilters(); applyFilters(); }
@@ -2300,22 +2328,50 @@ async function showPage(id){
   else if (id === 'invoices')    { renderInvoicesPage(); }
   else if (id === 'users')       { renderUsersPage(); }
   else if (id === 'products')    { renderProductsPage(); }
-  else if (id === 'auditlog')   { renderAuditLogPage(); }
+  else if (id === 'auditlog')    { renderAuditLogPage(); }
+}
+async function showPage(id){
+  const myToken = ++_navToken; // a newer navigation invalidates this one
+  // Switch the visible section + sidebar highlight immediately so the sidebar
+  // stays responsive while data loads.
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelector(`[data-page="${id}"]`).classList.add('active');
+  document.getElementById('topbarTitle').textContent=PAGE_TITLES[id];
+  // Body-only loader (sidebar stays clickable). Refresh light tables + only the
+  // heavy tables this page renders; cards/transactions are cached after first load.
+  showSectionLoader();
+  _navLoadDepth++;
+  try{
+    await loadData(PAGE_HEAVY[id] || {});
+  } finally {
+    _navLoadDepth = Math.max(0, _navLoadDepth-1);
+  }
+  // User switched pages mid-load → drop this stale render; the newer navigation
+  // owns the loader and renders its own page.
+  if(myToken !== _navToken) return;
+  hideSectionLoader();
+  renderPageBody(id);
 }
 
 // Explicit refresh button — pulls data + re-renders whichever page is active.
 async function manualRefresh(){
   const active = document.querySelector('.nav-item.active');
   const id = active ? active.getAttribute('data-page') : 'dashboard';
-  await loadData();
-  if (id === 'dashboard')        renderDashboard();
-  else if (id === 'partners')    renderPartnersPage();
-  else if (id === 'transactions'){ initTxnFilters(); applyFilters(); }
-  else if (id === 'txnlist')     { initTxnListFilters(); renderTxnList(); }
-  else if (id === 'invoices')    { renderInvoicesPage(); }
-  else if (id === 'users')       { renderUsersPage(); }
-  else if (id === 'products')    { renderProductsPage(); }
-  else if (id === 'auditlog')   { renderAuditLogPage(); }
+  const myToken = ++_navToken;
+  // Explicit refresh: force-pull light + this page's heavy tables (bypass cache
+  // so the daily cards/transactions update is picked up).
+  showSectionLoader('Yenilənir…');
+  _navLoadDepth++;
+  try{
+    await loadData(Object.assign({force:true}, PAGE_HEAVY[id] || {}));
+  } finally {
+    _navLoadDepth = Math.max(0, _navLoadDepth-1);
+  }
+  if(myToken !== _navToken) return; // user navigated away during refresh
+  hideSectionLoader();
+  renderPageBody(id);
   showToast('Verilənlər yeniləndi', true);
 }
 
@@ -4958,6 +5014,107 @@ async function bulkDeleteInvoices(){
   renderInvoicesPage();
 }
 
+// ── Bulk download of AKT documents for the selected invoices ────────────────
+// Fetches the AKT template once, then forms + downloads one .docx per invoice,
+// marking each row "done" in the progress modal as it completes.
+async function bulkDownloadInvoices(){
+  const ids=[...document.querySelectorAll('.inv-cb:checked')].map(cb=>Number(cb.dataset.id));
+  if(!ids.length) return;
+  if(typeof JSZip==='undefined'||typeof saveAs==='undefined'){
+    showToast('JSZip/FileSaver yüklənmir. İnternet bağlantısını yoxlayın.', false); return;
+  }
+  const invs=ids.map(id=>INVOICES.find(i=>i.id===id)).filter(Boolean);
+  if(!invs.length) return;
+
+  // Build the modal list — one row per selected AKT, all starting as "pending".
+  const listEl=document.getElementById('bulkDlList');
+  listEl.innerHTML=invs.map(inv=>{
+    const p=PARTNERS.find(x=>x.id===inv.partner_id);
+    const label=(inv.number||('INV-'+inv.id));
+    const pname=p?(p.name.length>34?p.name.slice(0,34)+'…':p.name):'—';
+    return `<div id="bdl-${inv.id}" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc">
+      <span class="bdl-status" style="width:18px;text-align:center;color:#94a3b8"><i class="fa-solid fa-clock"></i></span>
+      <span style="font-weight:600;font-size:12px;color:#1565c0;min-width:120px">${label}</span>
+      <span style="font-size:12px;color:#64748b">${pname}</span>
+    </div>`;
+  }).join('');
+  const progEl=document.getElementById('bulkDlProgress');
+  const doneBtn=document.getElementById('bulkDlDone');
+  const closeBtn=document.getElementById('bulkDlClose');
+  progEl.textContent=`0 / ${invs.length}`;
+  if(doneBtn) doneBtn.disabled=true;
+  if(closeBtn) closeBtn.style.visibility='hidden';
+  openModal('bulkDlModal');
+
+  const setStatus=(id,icon,color)=>{
+    const st=document.querySelector(`#bdl-${id} .bdl-status`);
+    if(st){ st.innerHTML=icon; st.style.color=color; }
+  };
+
+  // Fetch the AKT template a single time and reuse it for every document.
+  const tplName=TEMPLATE_FILES['akt'];
+  let tplBlob;
+  try{
+    const url=`${SUPABASE_URL}/storage/v1/object/${TEMPLATE_BUCKET}/${encodeURIComponent(tplName)}?t=${Date.now()}`;
+    const r=await fetch(url,{headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`},cache:'no-store'});
+    if(!r.ok) throw new Error(`HTTP ${r.status} — ${tplName}`);
+    tplBlob=await r.blob();
+  }catch(e){
+    invs.forEach(inv=>setStatus(inv.id,'<i class="fa-solid fa-xmark"></i>','#e53935'));
+    showToast(`Şablon endirilə bilmədi: ${e.message}`, false);
+    if(doneBtn) doneBtn.disabled=false;
+    if(closeBtn) closeBtn.style.visibility='visible';
+    return;
+  }
+
+  let done=0, failed=0;
+  for(const inv of invs){
+    setStatus(inv.id,'<i class="fa-solid fa-spinner fa-spin"></i>','#1565c0');
+    try{
+      const pid=inv.partner_id;
+      const partner=PARTNERS.find(x=>x.id===pid);
+      if(!partner) throw new Error('Tərəfdaş tapılmadı');
+      const deal=(DEALS||[]).find(d=>d.partner_id===pid&&d.status==='active')||null;
+      const pkg=(PACKAGES||[]).find(pk=>pk.pid===pid&&pk.status==='active')||null;
+      const feePkg=(FEE_PACKAGES[pid]||[]).find(fp=>fp.status==='active')||null;
+      const annexPkgs=pkg?[pkg]:[];
+
+      const zip=await JSZip.loadAsync(tplBlob);
+      const docPart=zip.file('word/document.xml');
+      if(!docPart) throw new Error('word/document.xml tapılmadı');
+      let docXml=await docPart.async('string');
+      docXml=_expandDocxTableRows(docXml, feePkg, inv, null, annexPkgs);
+      const tags=_buildTagMap(partner, deal, pkg, feePkg, inv);
+      for(const [k,v] of Object.entries(tags)){
+        const re=new RegExp(`\\{\\{\\s*${k}\\s*\\}\\}`,'g');
+        docXml=docXml.replace(re, _xmlEscape(String(v ?? '')));
+      }
+      zip.file('word/document.xml', docXml);
+      const blob=await zip.generateAsync({
+        type:'blob',
+        mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      });
+      const safeName=(partner.name||'partner').replace(/[\\/:*?"<>|]/g,'_');
+      const filename=`AKT_${safeName}_${inv.number||inv.id}.docx`;
+      saveAs(blob, filename);
+      _auditLog('DOWNLOAD_DOCUMENT','document',inv.id,filename,{partner_id:pid,doc_type:'akt',bulk:true});
+      setStatus(inv.id,'<i class="fa-solid fa-circle-check"></i>','#43a047');
+      done++;
+      // Small gap so the browser reliably processes back-to-back downloads.
+      await new Promise(res=>setTimeout(res, 400));
+    }catch(e){
+      failed++;
+      setStatus(inv.id,'<i class="fa-solid fa-circle-xmark"></i>','#e53935');
+      console.warn('Bulk download error, invoice',inv.id,e);
+    }
+    progEl.textContent=`${done+failed} / ${invs.length}`;
+  }
+
+  if(doneBtn) doneBtn.disabled=false;
+  if(closeBtn) closeBtn.style.visibility='visible';
+  showToast(`${done} sənəd yükləndi${failed?` · ${failed} xəta`:''}.`, failed===0);
+}
+
 function calcFeeResult(pid){
   const resEl=document.getElementById(`calcResult-${pid}`);
   if(!resEl) return;
@@ -5570,9 +5727,10 @@ function openCommissionCalc(pid){
 
 const _AZ_MONTHS_CALC=['Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr'];
 
-function openCalcInline(pid){
+async function openCalcInline(pid){
   const fps=(FEE_PACKAGES[pid]||[]).filter(f=>f.status==='active');
   if(!fps.length){ showToast('Bu tərəfdaşın aktiv komisyon paketi yoxdur.',false); return; }
+  await ensureHeavy({txns:true}); // commission calc reads TRANSACTIONS
 
   const el=document.getElementById(`calcInline-${pid}`);
   if(!el) return;
@@ -5877,7 +6035,8 @@ function createCommissionInvoiceFromCalc(pid, from, to, cnt, vol, commission){
 }
 
 // ── Batch Commission Invoice Generator ──
-function openCommissionBatchModal(){
+async function openCommissionBatchModal(){
+  await ensureHeavy({txns:true}); // batch commission preview reads TRANSACTIONS
   const now=new Date();
   const _li=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   const curStart=new Date(now.getFullYear(), now.getMonth(), 1);
@@ -6928,6 +7087,7 @@ async function insertProdType(code, description) {
 }
 
 async function discoverProdTypes() {
+  await ensureHeavy({cards:true}); // needs CARDS, which the Products page doesn't preload
   // Find PROD_TYPE codes that exist in CARDS but aren't in PROD_TYPES yet.
   const known = new Set(PROD_TYPES.map(p => p.code));
   const discovered = {};
