@@ -6360,7 +6360,8 @@ function renderInvoicesPage(){
   const totalAmt=INVOICES.reduce((s,i)=>s+i.total,0);
   const paid=INVOICES.filter(i=>i.status==='paid');
   const paidAmt=paid.reduce((s,i)=>s+i.total,0);
-  const overdue=INVOICES.filter(i=>i.status==='overdue').length;
+  const overdue=INVOICES.filter(i=>i.status!=='paid'&&i.status!=='cancelled'&&i.due_date&&i.due_date<isoToday()).length;
+  const overdueAmt=INVOICES.filter(i=>i.status!=='paid'&&i.status!=='cancelled'&&i.due_date&&i.due_date<isoToday()).reduce((s,i)=>s+i.total,0);
   const draft=INVOICES.filter(i=>i.status==='draft').length;
   document.getElementById('invoiceKpis').innerHTML=`
     <div class="kpi-card"><div class="kpi-lbl"><i class="fa-solid fa-file-invoice-dollar"></i> Cəmi Akt</div>
@@ -6369,7 +6370,7 @@ function renderInvoicesPage(){
       <div class="kpi-val">${paid.length}</div><div class="kpi-sub">${fmtMoney(paidAmt)}</div></div>
     <div class="kpi-card ${overdue>0?'c-red':''}" style="${overdue>0?'border-color:#e53935':''}">
       <div class="kpi-lbl"><i class="fa-solid fa-clock"></i> Gecikmiş</div>
-      <div class="kpi-val" style="${overdue>0?'color:#e53935':''}">${overdue}</div><div class="kpi-sub">—</div></div>
+      <div class="kpi-val" style="${overdue>0?'color:#e53935':''}">${overdue}</div><div class="kpi-sub">${overdueAmt>0?fmtMoney(overdueAmt):"—"}</div></div>
     <div class="kpi-card"><div class="kpi-lbl"><i class="fa-solid fa-pen-to-square"></i> Qaralamalar</div>
       <div class="kpi-val">${draft}</div><div class="kpi-sub">—</div></div>`;
 
