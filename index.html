@@ -230,12 +230,6 @@ td.r{text-align:right}td.mono{font-family:monospace;font-size:11px}
 .mcc-option:hover,.mcc-option.focused{background:#e3f2fd}
 .mcc-opt-code{font-weight:700;color:#1565c0;min-width:42px}
 .mcc-opt-desc{color:#334155}
-.yr-dd-wrap{position:relative}
-.yr-dd-btn{border:1.5px solid #e2e8f0;border-radius:8px;padding:9px 12px;font-size:13px;color:#1a2332;font-family:inherit}
-.yr-dd-btn:focus{border-color:#009688;box-shadow:0 0 0 3px rgba(0,150,136,.12)}
-.yr-dd-menu{padding:4px 0}
-.yr-dd-item{padding:6px 12px;font-size:12px;color:#334155;cursor:pointer;display:flex;align-items:center;gap:8px}
-.yr-dd-item:hover{background:#e3f2fd}
 .fp-rule-card{border:1.5px solid #e2e8f0;border-radius:10px;padding:13px 14px;margin-bottom:10px;background:#fafbfc;position:relative}
 .fp-rule-card:hover{border-color:#90caf9}
 .fp-rule-hdr{display:flex;align-items:center;gap:8px;margin-bottom:10px}
@@ -667,13 +661,9 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
               <option value="commission">Komissiya</option>
             </select>
           </div>
-          <div class="form-field yr-dd-wrap" style="min-width:150px;margin:0">
-            <label style="font-size:11px">İl</label>
-            <button type="button" class="yr-dd-btn" id="invf_year_btn" onclick="toggleInvYearDropdown(event)" style="width:100%;text-align:left;background:#fff;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:6px">
-              <span id="invf_year_label">Hamısı</span>
-              <i class="fa-solid fa-chevron-down" style="font-size:9px;color:#94a3b8"></i>
-            </button>
-            <div class="yr-dd-menu" id="invf_year_menu" style="display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:140px;background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;box-shadow:0 6px 16px rgba(0,0,0,.1);z-index:200;max-height:220px;overflow-y:auto"></div>
+          <div class="form-field" style="min-width:130px;margin:0">
+            <label style="font-size:11px">İl (Ctrl/Cmd ilə çoxlu seçim)</label>
+            <select id="invf_year" multiple size="4" onchange="renderInvoicesPage()" style="min-height:64px"></select>
           </div>
         </div>
       </div>
@@ -6337,49 +6327,7 @@ function _invSortIcon(col){
     : `<i class="fa-solid fa-sort-down" style="color:#1565c0;font-size:9px;margin-left:3px"></i>`;
 }
 
-let INVF_YEARS=[];
 function _invYear(inv){ return (inv.number||'').split('-')[1] || (inv.issue_date||'').slice(0,4); }
-function _invYearsAvailable(){
-  const yrs=new Set();
-  INVOICES.forEach(inv=>{ const y=_invYear(inv); if(y) yrs.add(y); });
-  return Array.from(yrs).sort((a,b)=>b-a);
-}
-function _renderInvYearMenu(){
-  const menu=document.getElementById('invf_year_menu');
-  if(!menu) return;
-  const years=_invYearsAvailable();
-  menu.innerHTML = years.length ? years.map(y=>`
-    <label class="yr-dd-item">
-      <input type="checkbox" value="${y}" ${INVF_YEARS.includes(y)?'checked':''} onchange="toggleInvYear('${y}')" style="accent-color:#1565c0">
-      ${y}
-    </label>`).join('') : `<div style="padding:8px 12px;font-size:11px;color:#94a3b8">Akt yoxdur</div>`;
-}
-function toggleInvYearDropdown(ev){
-  if(ev) ev.stopPropagation();
-  const menu=document.getElementById('invf_year_menu');
-  if(!menu) return;
-  const opening = menu.style.display==='none' || !menu.style.display;
-  if(opening){
-    _renderInvYearMenu();
-    document.addEventListener('click',_closeInvYearDropdown);
-  }
-  menu.style.display = opening ? 'block' : 'none';
-}
-function _closeInvYearDropdown(e){
-  const wrap=document.querySelector('.yr-dd-wrap');
-  const menu=document.getElementById('invf_year_menu');
-  if(wrap && menu && !wrap.contains(e.target)){
-    menu.style.display='none';
-    document.removeEventListener('click',_closeInvYearDropdown);
-  }
-}
-function toggleInvYear(y){
-  const idx=INVF_YEARS.indexOf(y);
-  if(idx>=0) INVF_YEARS.splice(idx,1); else INVF_YEARS.push(y);
-  const label=document.getElementById('invf_year_label');
-  if(label) label.textContent = INVF_YEARS.length ? INVF_YEARS.slice().sort((a,b)=>b-a).join(', ') : 'Hamısı';
-  renderInvoicesPage();
-}
 function renderInvoicesPage(){
   // Populate partner filter
   const pSel=document.getElementById('invf_partner');
@@ -6390,15 +6338,27 @@ function renderInvoicesPage(){
       pSel.appendChild(o);
     });
   }
+  // Populate year filter (native multi-select)
+  const ySel=document.getElementById('invf_year');
+  if(ySel && ySel.options.length===0){
+    const yrs=new Set();
+    INVOICES.forEach(inv=>{ const y=_invYear(inv); if(y) yrs.add(y); });
+    Array.from(yrs).sort((a,b)=>b-a).forEach(y=>{
+      const o=document.createElement('option');
+      o.value=y; o.textContent=y;
+      ySel.appendChild(o);
+    });
+  }
   const pfilt=parseInt(document.getElementById('invf_partner')?.value||'0');
   const sfilt=document.getElementById('invf_status')?.value||'';
   const tfilt=document.getElementById('invf_type')?.value||'';
+  const yfilt=Array.from(document.getElementById('invf_year')?.selectedOptions||[]).map(o=>o.value);
 
   const filtered=INVOICES.filter(inv=>{
     if(pfilt && inv.partner_id!==pfilt) return false;
     if(sfilt && inv.status!==sfilt) return false;
     if(tfilt && inv.type!==tfilt) return false;
-    if(INVF_YEARS.length && !INVF_YEARS.includes(_invYear(inv))) return false;
+    if(yfilt.length && !yfilt.includes(_invYear(inv))) return false;
     return true;
   }).sort((a,b)=>{
     const col=INV_SORT.col, dir=INV_SORT.dir;
