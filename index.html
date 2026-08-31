@@ -2355,6 +2355,12 @@ function ubar(pct){
   const w=Math.min(100,pct);
   return`<div class="ubar-wrap"><div class="ubar ${cls}" style="width:${w}%"></div></div><span class="ubar-lbl">${pct}%</span>`;
 }
+// Every live partner plus the soft-deleted ones. Use this for display and for
+// historical records (transactions, invoices, addendums) so a deleted partner's
+// name still resolves. Use PARTNERS itself for anything that creates or mutates,
+// so a deleted partner cannot be given new packages or invoices.
+function partnersAny(){ return PARTNERS_ALL.length ? PARTNERS_ALL : PARTNERS; }
+
 // Falls back to PARTNERS_ALL so invoices, addendums and the audit log keep
 // rendering the name of a soft-deleted partner.
 function pname(pid){
@@ -2816,7 +2822,7 @@ function renderDashboard(){
   const chipEl=document.getElementById('dashPartnerChip');
   if(chipEl){
     if(DASH_PARTNER_FILTER){
-      const pObj=PARTNERS.find(x=>x.id===DASH_PARTNER_FILTER);
+      const pObj=partnersAny().find(x=>x.id===DASH_PARTNER_FILTER);
       chipEl.style.display='inline-flex';
       chipEl.innerHTML=`<span style="font-size:12px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;
         border-radius:99px;padding:2px 10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"
@@ -3006,7 +3012,7 @@ function renderDashboard(){
   </tr></thead><tbody>`;
   if(allFps.length){
     allFps.forEach(fp=>{
-      const p=PARTNERS.find(x=>x.id===fp.partner_id);
+      const p=partnersAny().find(x=>x.id===fp.partner_id);
       const config=fp.tiers||{};
       // Show period from deal if present, otherwise fp.effective_from/_to
       const deal = (DEALS||[]).find(d => p && d.partner_id===p.id && d.status==='active');
@@ -4353,7 +4359,7 @@ function applyFilters(){
   const terminalFilter=document.getElementById('fTerminal')?.value||'';
   const sym='₼';const rate=1;
 
-  const pObj=pid?PARTNERS.find(p=>p.id===pid):null;
+  const pObj=pid?partnersAny().find(p=>p.id===pid):null;
   document.getElementById('barChartTitle').textContent=
     `Gündəlik Əməliyyat Həcmi — ${pObj?pObj.name:'Bütün Tərəfdaşlar'}`;
   renderBarChart(pid,cur,fromISO,toISO,opTypeFilter,mccFilter,terminalFilter);
@@ -4550,7 +4556,7 @@ function renderTxnList(){
     switch(_tlSortCol){
       case 'tx_id':    va=a.tx_id||'';    vb=b.tx_id||'';    break;
       case 'card_id':  va=a.card_id||'';  vb=b.card_id||'';  break;
-      case 'partner':  va=PARTNERS.find(p=>p.id===PROD_TYPE_MAP[a.prod_type])?.name||''; vb=PARTNERS.find(p=>p.id===PROD_TYPE_MAP[b.prod_type])?.name||''; break;
+      case 'partner':  va=partnersAny().find(p=>p.id===PROD_TYPE_MAP[a.prod_type])?.name||''; vb=partnersAny().find(p=>p.id===PROD_TYPE_MAP[b.prod_type])?.name||''; break;
       case 'op_date':  va=a.op_date||'';  vb=b.op_date||'';  break;
       case 'amt':      va=a.amt;          vb=b.amt;           break;
       case 'mcc':      va=a.mcc||'';      vb=b.mcc||'';       break;
@@ -4591,7 +4597,7 @@ function renderTxnList(){
   html+=`</tr></thead><tbody>`;
 
   rows.forEach(t=>{
-    const partnerName=(()=>{ const ppid=PROD_TYPE_MAP[t.prod_type]; return ppid?PARTNERS.find(p=>p.id===ppid)?.name||'—':'—'; })();
+    const partnerName=(()=>{ const ppid=PROD_TYPE_MAP[t.prod_type]; return ppid?partnersAny().find(p=>p.id===ppid)?.name||'—':'—'; })();
     const mccLabel=t.mcc?(MCC_LABELS[t.mcc]?`<span class="mono" style="font-size:10px;color:#64748b">${t.mcc}</span> ${MCC_LABELS[t.mcc]}`:t.mcc):'—';
     const ctryInfo=t.country?(CTRY_LABELS[t.country]||{name:t.country,flag:''}):null;
     const ctryLabel=ctryInfo?`${ctryInfo.flag} ${ctryInfo.name}`.trim():'—';
@@ -5469,7 +5475,7 @@ async function bulkDownloadInvoices(){
   // Build the modal list — one row per selected AKT, all starting as "pending".
   const listEl=document.getElementById('bulkDlList');
   listEl.innerHTML=invs.map(inv=>{
-    const p=PARTNERS.find(x=>x.id===inv.partner_id);
+    const p=partnersAny().find(x=>x.id===inv.partner_id);
     const label=(inv.number||('INV-'+inv.id));
     const pname=p?(p.name.length>34?p.name.slice(0,34)+'…':p.name):'—';
     return `<div id="bdl-${inv.id}" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc">
@@ -5512,7 +5518,7 @@ async function bulkDownloadInvoices(){
     setStatus(inv.id,'<i class="fa-solid fa-spinner fa-spin"></i>','#1565c0');
     try{
       const pid=inv.partner_id;
-      const partner=PARTNERS.find(x=>x.id===pid);
+      const partner=partnersAny().find(x=>x.id===pid);
       if(!partner) throw new Error('Tərəfdaş tapılmadı');
       const deal=(DEALS||[]).find(d=>d.partner_id===pid&&d.status==='active')||null;
       const pkg=(PACKAGES||[]).find(pk=>pk.pid===pid&&pk.status==='active')||null;
@@ -5862,7 +5868,7 @@ async function generateDocx(pid, type, extraId=null){
   const tplName = TEMPLATE_FILES[type];
   if (!tplName) { showToast(`Naməlum şablon növü: ${type}`, false); return; }
 
-  const partner = PARTNERS.find(x => x.id === pid);
+  const partner = partnersAny().find(x => x.id === pid);
   if (!partner) { showToast('Tərəfdaş tapılmadı!', false); return; }
 
   const deal   = (DEALS    || []).find(d => d.partner_id === pid && d.status === 'active') || null;
@@ -6834,7 +6840,7 @@ function renderInvoicesPage(){
     const col=INV_SORT.col, dir=INV_SORT.dir;
     let va, vb;
     if(col==='number')       { va=a.number||''; vb=b.number||''; return dir*(va.localeCompare(vb)); }
-    if(col==='partner')      { const pa=PARTNERS.find(x=>x.id===a.partner_id); const pb=PARTNERS.find(x=>x.id===b.partner_id); return dir*((pa?.name||'').localeCompare(pb?.name||'')); }
+    if(col==='partner')      { const pa=partnersAny().find(x=>x.id===a.partner_id); const pb=partnersAny().find(x=>x.id===b.partner_id); return dir*((pa?.name||'').localeCompare(pb?.name||'')); }
     if(col==='type')         { va=a.type||''; vb=b.type||''; return dir*(va.localeCompare(vb)); }
     if(col==='due_date')     { va=a.due_date||''; vb=b.due_date||''; return dir*(va.localeCompare(vb)); }
     if(col==='period_from')  { va=a.period_from||''; vb=b.period_from||''; return dir*(va.localeCompare(vb)); }
@@ -6892,7 +6898,7 @@ function renderInvoicesPage(){
   </tr></thead><tbody>`;
 
   filtered.forEach(inv=>{
-    const p=PARTNERS.find(x=>x.id===inv.partner_id);
+    const p=partnersAny().find(x=>x.id===inv.partner_id);
     const isOverdue=inv.status!=='paid'&&inv.status!=='cancelled'&&inv.due_date&&inv.due_date<isoToday();
     const typeColor=invTypeColor[inv.type]||'#64748b';
     const periodCell=inv.period_from?`<span style="font-size:10px">${fmtDate(inv.period_from)}–${fmtDate(inv.period_to)}</span>`
@@ -7215,7 +7221,7 @@ function markInvoicePaid(id){
 function openInvoiceDetail(id){
   const inv=INVOICES.find(i=>i.id===id);
   if(!inv) return;
-  const p=PARTNERS.find(x=>x.id===inv.partner_id);
+  const p=partnersAny().find(x=>x.id===inv.partner_id);
   const isOverdue=inv.status!=='paid'&&inv.status!=='cancelled'&&inv.due_date&&inv.due_date<isoToday();
   document.getElementById('invDetailBody').innerHTML=`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;font-size:12px">
