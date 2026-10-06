@@ -318,6 +318,23 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
 .sort-th:not(.asc):not(.desc) .sort-icon::after{content:'⇅'}
 
 /* TXN LIST PAGE */
+/* CLOSED LOOP */
+.cl-tgl{width:24px;height:24px;border-radius:6px;border:1.5px solid #e2e8f0;background:#fff;color:#009688;font-weight:700;font-size:14px;line-height:1;cursor:pointer;font-family:inherit;padding:0}
+.cl-tgl:hover{border-color:#009688;background:#e0f2f1}
+tr.cl-detail{background:#f8fafc}
+tr.cl-detail:hover{background:#f8fafc}
+.cl-detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px 18px;padding:4px 6px 6px 36px}
+.cl-detail-grid .k{font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.cl-detail-grid .v{font-size:12px;color:#1a2332;word-break:break-word;user-select:text}
+.cl-pt{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px}
+.cl-pt-int{background:#e0f2f1;color:#00695c}.cl-pt-ext{background:#ede7f6;color:#5e35b1}
+.cl-collapse-hdr{cursor:pointer;user-select:none;margin-bottom:0}
+.cl-collapse-hdr .cl-chev{margin-left:auto;color:#94a3b8;font-size:12px;transition:transform .15s}
+.cl-collapsed .cl-chev{transform:rotate(-90deg)}
+.cl-fp-grid{display:grid;grid-template-columns:110px 1fr 1fr;gap:8px 10px;align-items:center}
+@media(max-width:600px){.cl-fp-grid{grid-template-columns:1fr 1fr}.cl-fp-grid .cl-fp-lbl{grid-column:1/-1}}
+.cl-fp-grid .h{font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px}
+.cl-fp-preview{margin-top:10px;background:#f3e5f5;border-radius:8px;padding:8px 12px;font-size:12px;color:#4a148c}
 .txn-list-filter{background:#fff;border-radius:12px;padding:14px 18px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:18px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
 .txn-list-filter .fg input[type=text]{border:1.5px solid #e2e8f0;border-radius:7px;padding:7px 10px;font-size:12px;color:#334155;background:#fff;outline:none;font-family:inherit;min-width:160px}
 .txn-list-filter .fg input[type=text]:focus{border-color:#009688;box-shadow:0 0 0 3px rgba(0,150,136,.12)}
@@ -401,6 +418,9 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
       </div>
       <div class="nav-item" data-page="txnlist" onclick="showPage('txnlist')">
         <i class="fa-solid fa-list"></i> Əməliyyatlar Siyahısı
+      </div>
+      <div class="nav-item" data-page="closedloop" onclick="showPage('closedloop')">
+        <i class="fa-solid fa-arrows-rotate"></i> Closed Loop Əməliyyatlar
       </div>
       <div class="nav-item" data-page="invoices" onclick="showPage('invoices')">
         <i class="fa-solid fa-file-invoice-dollar"></i> Aktlar
@@ -634,6 +654,51 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
         </div>
         <div style="overflow-x:auto">
           <table id="txnListTable"></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ──── CLOSED LOOP ──── -->
+    <div id="page-closedloop" class="page">
+      <div class="filter-bar">
+        <div class="fg"><label><i class="fa-solid fa-handshake"></i> Tərəfdaş</label>
+          <select id="clPartner"><option value="0">Hamısı</option></select></div>
+        <div class="fg"><label><i class="fa-solid fa-calendar-days"></i> Başlanğıc</label>
+          <input type="date" id="clFrom"></div>
+        <div class="fg"><label>&nbsp;</label><input type="date" id="clTo"></div>
+        <div class="fg"><label><i class="fa-solid fa-right-left"></i> Ödəniş növü</label>
+          <select id="clType">
+            <option value="">Hamısı</option>
+            <option value="INTERNAL">INTERNAL</option>
+            <option value="EXTERNAL">EXTERNAL</option>
+          </select></div>
+        <div class="fg"><label><i class="fa-solid fa-circle-check"></i> Status</label>
+          <select id="clStatus"></select></div>
+        <div class="fg"><label><i class="fa-solid fa-magnifying-glass"></i> Axtarış</label>
+          <input type="text" id="clSearch" placeholder="Göndərən, alan, TRAN_ID, təyinat…"
+            style="border:1.5px solid #e2e8f0;border-radius:7px;padding:7px 10px;font-size:12px;font-family:inherit;outline:none;min-width:220px"
+            onkeydown="if(event.key==='Enter')renderClosedLoop()"></div>
+        <div class="fg"><label>&nbsp;</label>
+          <button class="btn btn-primary" onclick="renderClosedLoop()"><i class="fa-solid fa-filter"></i> Tətbiq et</button></div>
+        <div class="fg"><label>&nbsp;</label>
+          <button class="btn btn-outline" onclick="resetClFilters()"><i class="fa-solid fa-rotate-left"></i> Sıfırla</button></div>
+      </div>
+      <div class="kpi-grid kpi-grid-3" id="clKpis" style="margin-bottom:18px"></div>
+      <div class="chart-card" id="clChartCard" style="margin-bottom:18px">
+        <div class="chart-title cl-collapse-hdr" onclick="toggleClChart()" title="Aç / bağla">
+          <i class="fa-solid fa-chart-bar"></i>
+          <span id="clChartTitle">Gündəlik Əməliyyat Həcmi — Bütün Tərəfdaşlar</span>
+          <i class="fa-solid fa-chevron-down cl-chev"></i>
+        </div>
+        <div id="clChartBody" style="margin-top:14px"><canvas id="clBarChart" height="90"></canvas></div>
+      </div>
+      <div class="tcard">
+        <div class="tcard-hdr">
+          <h3><i class="fa-solid fa-arrows-rotate" style="color:#009688"></i> Closed Loop Əməliyyatlar</h3>
+          <span id="clCount" style="font-size:11px;color:#94a3b8"></span>
+        </div>
+        <div style="overflow-x:auto">
+          <table id="clTable"></table>
         </div>
       </div>
     </div>
@@ -1087,6 +1152,23 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
       <div style="font-size:11px;color:#64748b;margin-bottom:8px"><i class="fa-solid fa-circle-info"></i> Qaydalar yuxarıdan aşağı yoxlanılır — birinci uyğun gələn tətbiq edilir.</div>
       <div id="fpRulesContainer"></div>
 
+      <!-- Closed Loop commission -->
+      <div style="font-size:12px;font-weight:700;color:#334155;margin-top:18px;margin-bottom:6px"><i class="fa-solid fa-arrows-rotate" style="color:#7b1fa2;font-size:11px"></i> Closed Loop Komissiyası</div>
+      <div style="font-size:11px;color:#64748b;margin-bottom:8px"><i class="fa-solid fa-circle-info"></i> Hər köçürməyə ayrıca tətbiq olunur: məbləğ × faiz, amma minimumdan az olmamaqla. Boş saxlansa, komissiya hesablanmır.</div>
+      <div class="fp-rule-card" oninput="clFpPreview('upf')">
+        <div class="cl-fp-grid">
+          <div></div><div class="h">Faiz (%)</div><div class="h">Minimum (₼)</div>
+          <div class="cl-fp-lbl"><span class="cl-pt cl-pt-int">INTERNAL</span></div>
+          <input class="tier-inp" id="upf_cl_int_pct" type="number" min="0" max="100" step="0.01" placeholder="0.50">
+          <input class="tier-inp" id="upf_cl_int_min" type="number" min="0" step="0.01" placeholder="0.00">
+          <div class="cl-fp-lbl"><span class="cl-pt cl-pt-ext">EXTERNAL</span></div>
+          <input class="tier-inp" id="upf_cl_ext_pct" type="number" min="0" max="100" step="0.01" placeholder="1.20">
+          <input class="tier-inp" id="upf_cl_ext_min" type="number" min="0" step="0.01" placeholder="0.00">
+        </div>
+        <div style="font-size:11px;color:#64748b;margin-top:8px">INTERNAL = Unibank daxili köçürmə · EXTERNAL = başqa banka köçürmə</div>
+        <div class="cl-fp-preview" id="upf_cl_preview"></div>
+      </div>
+
       <!-- One-time commissions -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:18px;margin-bottom:6px">
         <div style="font-size:12px;font-weight:700;color:#334155"><i class="fa-solid fa-receipt" style="color:#f57c00;font-size:11px"></i> Birdəfəlik Komissiyalar</div>
@@ -1237,6 +1319,23 @@ code{background:#b2dfdb;padding:1px 5px;border-radius:3px;font-size:11px}
         Qaydalar yuxarıdan aşağı yoxlanılır — birinci uyğun gələn tətbiq edilir.
       </div>
       <div id="fpRulesContainer_edit"></div>
+
+      <!-- Closed Loop commission -->
+      <div class="form-section" style="margin-top:20px"><i class="fa-solid fa-arrows-rotate" style="color:#7b1fa2;font-size:11px"></i> Closed Loop Komissiyası</div>
+      <div style="font-size:11px;color:#64748b;margin-bottom:8px"><i class="fa-solid fa-circle-info"></i> Hər köçürməyə ayrıca tətbiq olunur: məbləğ × faiz, amma minimumdan az olmamaqla. Boş saxlansa, komissiya hesablanmır.</div>
+      <div class="fp-rule-card" oninput="clFpPreview('fpf')">
+        <div class="cl-fp-grid">
+          <div></div><div class="h">Faiz (%)</div><div class="h">Minimum (₼)</div>
+          <div class="cl-fp-lbl"><span class="cl-pt cl-pt-int">INTERNAL</span></div>
+          <input class="tier-inp" id="fpf_cl_int_pct" type="number" min="0" max="100" step="0.01" placeholder="0.50">
+          <input class="tier-inp" id="fpf_cl_int_min" type="number" min="0" step="0.01" placeholder="0.00">
+          <div class="cl-fp-lbl"><span class="cl-pt cl-pt-ext">EXTERNAL</span></div>
+          <input class="tier-inp" id="fpf_cl_ext_pct" type="number" min="0" max="100" step="0.01" placeholder="1.20">
+          <input class="tier-inp" id="fpf_cl_ext_min" type="number" min="0" step="0.01" placeholder="0.00">
+        </div>
+        <div style="font-size:11px;color:#64748b;margin-top:8px">INTERNAL = Unibank daxili köçürmə · EXTERNAL = başqa banka köçürmə</div>
+        <div class="cl-fp-preview" id="fpf_cl_preview"></div>
+      </div>
 
       <!-- ══ ONE-TIME COMMISSIONS ══ -->
       <div class="form-section" style="margin-top:20px;display:flex;align-items:center;justify-content:space-between">
@@ -1819,6 +1918,7 @@ const TXN_FETCH_LIMIT   = 200000;
 
 let PROD_TYPE_MAP = {};   // prod_type code → partner_id (built from PROD_TYPES)
 let DEALS = [];           // populated from Supabase package_deals in loadData() (migration v8)
+let CLOSEDLOOP = [];      // closedloop_transactions — small, loaded with the light tables
 
 
 // ═══════════════════════ SUPABASE CONFIG
@@ -1966,6 +2066,19 @@ function txnFromDb(r){
     merch_descr:r.merch_descr||null
   };
 }
+function clFromDb(r){
+  return {
+    src_id:r.src_id, tran_id:r.tran_id||'',
+    created_at:r.created_at_src||null,
+    op_date:r.op_date ? String(r.op_date).slice(0,10) : null,
+    amt:Number(r.amount||0), currency:r.currency||'AZN',
+    purpose:r.pmt_purpose||'', status:r.status||'', error_reason:r.error_reason||'',
+    payment_type:(r.payment_type||'').toUpperCase(),
+    sender_name:r.sender_name||'', sender_voen:(r.sender_voen||'').trim(),
+    recipient_name:r.recipient_name||'', recipient_bank:r.recipient_bank_name||'',
+    recipient_voen:r.recipient_tax_number||''
+  };
+}
 function prodTypeFromDb(r){
   return {
     code:r.code, description:r.description||'',
@@ -2032,7 +2145,7 @@ async function loadData(opts){
       _txnFrom=c.toISOString().slice(0,10);
     }
 
-    const [partners,pkgs,users,docs,fps,mccRows,cntryRows,dealRows,ptRows,invRows,addRows,cardRows,txnRows]=
+    const [partners,pkgs,users,docs,fps,mccRows,cntryRows,dealRows,ptRows,invRows,addRows,cardRows,txnRows,clRows]=
       await Promise.all([
         sb('GET','partners',null,'?order=id').catch(_fail('partners')),
         sb('GET','packages',null,'?order=id').catch(_fail('packages')),
@@ -2051,6 +2164,7 @@ async function loadData(opts){
                      `?${_txnFrom?`op_date=gte.${_txnFrom}&`:''}order=op_date.desc&limit=${TXN_FETCH_LIMIT}`)
                     .catch(_fail('transactions'))
                 : Promise.resolve(undefined),
+        sb('GET','closedloop_transactions',null,'?order=created_at_src.desc&limit=50000').catch(_fail('closedloop_transactions')),
       ]);
 
     // ── Light tables ──
@@ -2081,6 +2195,7 @@ async function loadData(opts){
     if(cntryRows?.length) CTRY_LABELS=buildCtryLabels(cntryRows);
 
     DEALS=(dealRows||[]).map(dealFromDb);
+    if(clRows) CLOSEDLOOP=clRows.map(clFromDb);
 
     PROD_TYPES=(ptRows||[]).map(prodTypeFromDb);
     PROD_TYPE_MAP={};
@@ -2524,6 +2639,7 @@ const PAGE_TITLES={
   partners:'Tərəfdaşlar & Paketlər / Partners & Packages',
   transactions:'Əməliyyat Analitikası / Transaction Analytics',
   txnlist:'Əməliyyatlar Siyahısı / Transaction List',
+  closedloop:'Closed Loop Əməliyyatlar',
   invoices:'Aktlar / Invoices',
   users:'İstifadəçilər & Rollar / Users & Roles',
   products:'Məhsul Növləri / Product Types',
@@ -2542,6 +2658,7 @@ function renderPageBody(id){
   else if (id === 'partners')    renderPartnersPage();
   else if (id === 'transactions'){ initTxnFilters(); applyFilters(); }
   else if (id === 'txnlist')     { initTxnListFilters(); renderTxnList(); }
+  else if (id === 'closedloop')  { initClFilters(); renderClosedLoop(); }
   else if (id === 'invoices')    { renderInvoicesPage(); }
   else if (id === 'users')       { renderUsersPage(); }
   else if (id === 'products')    { renderProductsPage(); }
@@ -3529,7 +3646,7 @@ function togglePkgMfCap(sel){
 // ═══════════════════════ UNIFIED PACKAGE FORM
 function openUnifiedPackageForm(pid, pkgId=null, fpId=null){
   if(!_requireEdit()) return;
-  _fpFormCtx={rulesId:'fpRulesContainer',otId:'otContainer',otStripId:'otTplStrip',defaultPctId:'upf_default_pct',defaultMinId:'upf_default_min'};
+  _fpFormCtx={rulesId:'fpRulesContainer',otId:'otContainer',otStripId:'otTplStrip',defaultPctId:'upf_default_pct',defaultMinId:'upf_default_min',clPrefix:'upf'};
   pid=Number(pid);
   document.getElementById('upf_pid').value=pid;
   document.getElementById('upf_pkg_id').value=pkgId||'';
@@ -3597,6 +3714,7 @@ function openUnifiedPackageForm(pid, pkgId=null, fpId=null){
   renderFpRules(cfg.rules||[]);
   renderOtCommissions(cfg.one_time||[]);
   renderOtTemplateStrip();
+  setClFpFields('upf', cfg.closed_loop);
 
   openModal('unifiedPkgModal');
   initDatePickerConfirm(document.getElementById('unifiedPkgModal'));
@@ -3954,6 +4072,7 @@ async function openDetailModal(pid){
             ${rule.turnover_trigger?`<span style="color:#2e7d32;font-size:10px"> · ${rule.turnover_trigger.period==='monthly'?'Aylıq':'İllik'} ≥${fmtMoney(rule.turnover_trigger.threshold)}</span>`:''}
           </div>`).join('')}
         </div>
+        ${clConfigLine(config.closed_loop)}
         ${(config.one_time||[]).length>0?`
         <div style="border-top:1px solid #e2e8f0;margin-top:10px;padding-top:10px">
           <div style="font-size:10px;font-weight:700;color:#f57c00;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">
@@ -4646,6 +4765,335 @@ function resetFilters(){
   applyFilters();
 }
 
+// ═══════════════════════ CLOSED LOOP
+// Partner is never stored on the row: the sender VOEN is matched against
+// partners.voen at render time, so filling a partner's VOEN attributes all
+// past transfers instantly.
+function clPartnerByVoen(voen){
+  if(!voen) return null;
+  return partnersAny().find(p=>(p.voen||'').trim()===voen) || null;
+}
+function clActiveConfig(pid){
+  const fp=(FEE_PACKAGES[pid]||[]).find(f=>f.status==='active');
+  return fp?.tiers?.closed_loop || null;
+}
+function clTypeKey(t){ return t.payment_type==='EXTERNAL' ? 'external' : 'internal'; }
+// Per transfer: max(amount × pct, min). null = no rate configured for this type.
+function clFee(t, cfg){
+  const r=cfg?.[clTypeKey(t)];
+  if(!r || (r.pct==null && r.min_amt==null)) return null;
+  return Math.max(t.amt*(Number(r.pct)||0)/100, Number(r.min_amt)||0);
+}
+// Charged transfers of a partner in [from,to]: SUCCESS only.
+function clTxnsFor(pid, from, to){
+  const p=partnersAny().find(x=>x.id===pid);
+  const voen=(p?.voen||'').trim();
+  if(!voen) return [];
+  return CLOSEDLOOP.filter(t=>t.sender_voen===voen && t.status==='SUCCESS' &&
+    t.op_date && (!from||t.op_date>=from) && (!to||t.op_date<=to));
+}
+function clMonthEnd(fromISO){
+  const [y,m]=fromISO.split('-').map(Number);
+  return `${y}-${String(m).padStart(2,'0')}-${String(new Date(y,m,0).getDate()).padStart(2,'0')}`;
+}
+function clMonthLabel(iso){
+  const [y,m]=iso.split('-');
+  return `${_AZ_MONTHS_CALC[Number(m)-1]} ${y}`;
+}
+function clPtBadge(pt){
+  return pt==='EXTERNAL' ? '<span class="cl-pt cl-pt-ext">EXTERNAL</span>'
+       : pt==='INTERNAL' ? '<span class="cl-pt cl-pt-int">INTERNAL</span>'
+       : `<span class="cl-pt" style="background:#eceff1;color:#455a64">${escapeHtml(pt||'—')}</span>`;
+}
+// Aggregate by type; types without transfers are simply absent.
+function clAggregate(txns, cfg){
+  const agg={};
+  txns.forEach(t=>{
+    const k=t.payment_type||'—';
+    if(!agg[k]) agg[k]={cnt:0,vol:0,fee:0};
+    agg[k].cnt++; agg[k].vol+=t.amt; agg[k].fee+=clFee(t,cfg)||0;
+  });
+  return agg;
+}
+const CL_TYPE_ORDER=['INTERNAL','EXTERNAL'];
+function clTypesIn(agg){
+  return Object.keys(agg).sort((a,b)=>(CL_TYPE_ORDER.indexOf(a)+1||9)-(CL_TYPE_ORDER.indexOf(b)+1||9));
+}
+
+// ── Fee package form ──
+function setClFpFields(prefix, cl){
+  const set=(k,v)=>{const el=document.getElementById(`${prefix}_cl_${k}`); if(el) el.value=(v??'');};
+  set('int_pct',cl?.internal?.pct); set('int_min',cl?.internal?.min_amt);
+  set('ext_pct',cl?.external?.pct); set('ext_min',cl?.external?.min_amt);
+  clFpPreview(prefix);
+}
+function getClFpFields(prefix){
+  if(!prefix) return null;
+  const g=k=>{const v=(document.getElementById(`${prefix}_cl_${k}`)?.value||'').trim(); return v===''?null:parseFloat(v);};
+  const part=(pct,min)=> (pct==null&&min==null) ? null : {pct:pct??0, min_amt:min??0};
+  const internal=part(g('int_pct'),g('int_min'));
+  const external=part(g('ext_pct'),g('ext_min'));
+  if(!internal && !external) return null;
+  const out={};
+  if(internal) out.internal=internal;
+  if(external) out.external=external;
+  return out;
+}
+function clFpPreview(prefix){
+  const el=document.getElementById(`${prefix}_cl_preview`);
+  if(!el) return;
+  const cfg=getClFpFields(prefix);
+  if(!cfg){ el.innerHTML='Closed Loop komissiyası təyin edilməyib.'; return; }
+  const ex=(pt,amt)=>{ const f=clFee({payment_type:pt,amt},cfg); return f==null?null:`${fmtN(amt,0)} ₼ ${pt} → ${fmtMoney(f)}`; };
+  el.innerHTML='<b>Nümunə:</b> '+[ex('INTERNAL',100),ex('INTERNAL',50),ex('EXTERNAL',500)].filter(Boolean).join(' &nbsp;·&nbsp; ');
+}
+function clConfigLine(cl){
+  if(!cl || (!cl.internal && !cl.external)) return '';
+  const part=(lbl,r)=>r?`${lbl} ${r.pct||0}% / min ${fmtMoney(r.min_amt||0)}`:null;
+  return `<div style="margin-top:6px;font-size:12px;color:#334155"><i class="fa-solid fa-arrows-rotate" style="color:#7b1fa2;font-size:10px"></i>
+    <strong>Closed Loop:</strong> ${[part('INTERNAL',cl.internal),part('EXTERNAL',cl.external)].filter(Boolean).join(' · ')}</div>`;
+}
+
+// ── Calculator ──
+function clSummaryChip(pid){
+  const txns=clTxnsFor(pid);
+  if(!txns.length) return '';
+  const vol=txns.reduce((s,t)=>s+t.amt,0);
+  const fee=txns.reduce((s,t)=>s+(clFee(t,clActiveConfig(pid))||0),0);
+  return `<div style="margin-top:8px"><span style="background:#f3e5f5;border:1px solid #ce93d8;border-radius:6px;padding:6px 12px;display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <i class="fa-solid fa-arrows-rotate" style="color:#7b1fa2"></i> Closed Loop:
+    <span><strong>${fmtMoney(vol)}</strong> həcm</span><span>·</span>
+    <span><strong>${fmtN(txns.length)}</strong> köçürmə</span><span>·</span>
+    <strong style="color:#6a1b9a">${fmtMoney(fee)}</strong></span></div>`;
+}
+function clBreakdownHtml(pid, from, to){
+  const txns=clTxnsFor(pid, from, to);
+  if(!txns.length) return '';
+  const cfg=clActiveConfig(pid);
+  const byMonth={};
+  txns.forEach(t=>{ const m=t.op_date.slice(0,7); (byMonth[m]=byMonth[m]||[]).push(t); });
+  const td='padding:6px 8px';
+  let rows='', totCnt=0, totVol=0, totFee=0, missingRate=false;
+  Object.keys(byMonth).sort().forEach(m=>{
+    const agg=clAggregate(byMonth[m], cfg);
+    clTypesIn(agg).forEach(k=>{
+      const a=agg[k];
+      if(!cfg?.[k==='EXTERNAL'?'external':'internal']) missingRate=true;
+      totCnt+=a.cnt; totVol+=a.vol; totFee+=a.fee;
+      rows+=`<tr style="border-bottom:1px solid #ede7f6">
+        <td style="${td};font-weight:600">${clMonthLabel(m)}</td><td style="${td}">${clPtBadge(k)}</td>
+        <td style="${td};text-align:right">${fmtN(a.cnt)}</td>
+        <td style="${td};text-align:right">${fmtMoney(a.vol)}</td>
+        <td style="${td};text-align:right;color:#7b1fa2;font-weight:700">${fmtMoney(a.fee)}</td></tr>`;
+    });
+  });
+  const th='padding:6px 8px;font-size:10px;color:#7b1fa2';
+  return `<div style="margin-top:16px;font-weight:700;color:#7b1fa2;font-size:13px;margin-bottom:8px">
+      <i class="fa-solid fa-arrows-rotate"></i> Closed Loop Komissiyası</div>
+    ${missingRate?`<div style="font-size:11px;color:#bf360c;margin-bottom:6px"><i class="fa-solid fa-triangle-exclamation"></i> Bəzi növlər üçün komisyon paketində Closed Loop dərəcəsi təyin edilməyib.</div>`:''}
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px">
+      <thead><tr style="background:#ede7f6">
+        <th style="${th};text-align:left">Ay</th><th style="${th};text-align:left">Növ</th>
+        <th style="${th};text-align:right">Say</th><th style="${th};text-align:right">Həcm</th>
+        <th style="${th};text-align:right">Komissiya</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr style="background:#ede7f6;font-weight:800">
+        <td style="padding:7px 8px" colspan="2">CƏMİ</td>
+        <td style="padding:7px 8px;text-align:right">${fmtN(totCnt)}</td>
+        <td style="padding:7px 8px;text-align:right">${fmtMoney(totVol)}</td>
+        <td style="padding:7px 8px;text-align:right;color:#7b1fa2">${fmtMoney(totFee)}</td></tr></tfoot>
+    </table>
+    <button class="btn btn-outline" style="width:100%;border-color:#7b1fa2;color:#7b1fa2" onclick="createClInvoiceFromCalc(${pid},'${from}','${to}')">
+      <i class="fa-solid fa-plus"></i> Closed Loop Aktı Yarat
+    </button>`;
+}
+
+// ── Aktlar ──
+function clInvoiceLine(pid, from, to){
+  const txns=clTxnsFor(pid, from, to);
+  if(!txns.length) return null;
+  const agg=clAggregate(txns, clActiveConfig(pid));
+  const fee=Object.values(agg).reduce((s,a)=>s+a.fee,0);
+  const parts=[];
+  if(agg.INTERNAL) parts.push(`${agg.INTERNAL.cnt} daxili`);
+  if(agg.EXTERNAL) parts.push(`${agg.EXTERNAL.cnt} xarici`);
+  const period=from.slice(0,7)===to.slice(0,7) ? clMonthLabel(from) : `${clMonthLabel(from)} – ${clMonthLabel(to)}`;
+  return {
+    description_internal:`Closed Loop komissiyası — ${period}${parts.length?` (${parts.join(', ')})`:''}`,
+    description_legal:'Köçürmə xidməti üzrə komissiya haqqı',
+    amount:Math.round(fee*100)/100,
+    source:'closed_loop',
+  };
+}
+function addInvLineFromCl(idx){
+  const c=window._invClOptions?.[idx];
+  if(!c) return;
+  const sel=document.getElementById('invf_pid'); if(sel) sel.value=c.pid;
+  addInvLineItem(c.line);
+}
+function createClInvoiceFromCalc(pid, from, to){
+  const line=clInvoiceLine(pid, from, to);
+  if(!line){ showToast('Bu dövrdə Closed Loop köçürməsi yoxdur.',false); return; }
+  openInvoiceForm();
+  const sel=document.getElementById('invf_pid'); if(sel) sel.value=pid;
+  addInvLineItem(line);
+}
+
+// ── Page ──
+function clDefaultDates(){
+  const to=new Date(); const from=new Date(); from.setDate(from.getDate()-29);
+  return {from:from.toISOString().slice(0,10), to:to.toISOString().slice(0,10)};
+}
+function initClFilters(){
+  const ps=document.getElementById('clPartner');
+  const keep=ps.value;
+  ps.innerHTML='<option value="0">Hamısı</option><option value="-1">Tərəfdaşı müəyyən edilməyən</option>';
+  PARTNERS.forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=p.name; ps.appendChild(o); });
+  if(keep && [...ps.options].some(o=>o.value===keep)) ps.value=keep;
+  const ss=document.getElementById('clStatus');
+  const keepS=ss.dataset.init ? ss.value : 'SUCCESS';
+  const statuses=[...new Set(['SUCCESS',...CLOSEDLOOP.map(t=>t.status).filter(Boolean)])].sort();
+  ss.innerHTML='<option value="">Hamısı</option>'+statuses.map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+  ss.value=keepS; ss.dataset.init='1';
+  if(!document.getElementById('clFrom').value){
+    const d=clDefaultDates();
+    document.getElementById('clFrom').value=d.from;
+    document.getElementById('clTo').value=d.to;
+  }
+  let collapsed=false; try{ collapsed=localStorage.getItem('cl_chart_collapsed')==='1'; }catch(e){}
+  applyClChartCollapsed(collapsed);
+}
+function resetClFilters(){
+  const d=clDefaultDates();
+  document.getElementById('clPartner').value='0';
+  document.getElementById('clFrom').value=d.from;
+  document.getElementById('clTo').value=d.to;
+  document.getElementById('clType').value='';
+  document.getElementById('clStatus').value='SUCCESS';
+  document.getElementById('clSearch').value='';
+  renderClosedLoop();
+}
+function applyClChartCollapsed(c){
+  document.getElementById('clChartCard').classList.toggle('cl-collapsed',c);
+  document.getElementById('clChartBody').hidden=c;
+}
+function toggleClChart(){
+  const c=!document.getElementById('clChartCard').classList.contains('cl-collapsed');
+  applyClChartCollapsed(c);
+  try{ localStorage.setItem('cl_chart_collapsed',c?'1':'0'); }catch(e){}
+  if(!c && clBarChart) clBarChart.resize();
+}
+let clBarChart=null;
+function renderClChart(rows, fromISO, toISO){
+  const days=[];
+  const start=new Date((fromISO||rows.map(r=>r.op_date).sort()[0]||isoToday())+'T00:00:00');
+  const end=new Date((toISO||isoToday())+'T00:00:00');
+  const idx={};
+  for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
+    const iso=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    idx[iso]=days.length;
+    days.push({label:`${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`,vol:0,cnt:0});
+  }
+  rows.forEach(t=>{ const i=idx[t.op_date]; if(i!=null){ days[i].vol+=t.amt; days[i].cnt++; } });
+  destroyChart(clBarChart);
+  clBarChart=new Chart(document.getElementById('clBarChart').getContext('2d'),{
+    type:'bar',
+    data:{labels:days.map(d=>d.label),datasets:[
+      {label:'Həcm (₼)',data:days.map(d=>Math.round(d.vol*100)/100),
+        backgroundColor:'rgba(0,150,136,.75)',borderColor:'#009688',borderWidth:1,borderRadius:4,yAxisID:'y',order:2},
+      {label:'Əməliyyat sayı',data:days.map(d=>d.cnt),type:'line',
+        borderColor:'#f57c00',backgroundColor:'transparent',borderWidth:2,pointRadius:2,tension:0.4,yAxisID:'y1',order:1}
+    ]},
+    options:{responsive:true,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:14}},
+        tooltip:{callbacks:{label:(ctx)=>ctx.datasetIndex===0
+          ?` Həcm: ₼ ${ctx.parsed.y.toLocaleString()}`
+          :` Say: ${ctx.parsed.y.toLocaleString()}`}}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:10},maxTicksLimit:12}},
+        y:{position:'left',grid:{color:'#f1f5f9'},beginAtZero:true,ticks:{font:{size:10},callback:v=>'₼'+(v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':v)}},
+        y1:{position:'right',grid:{drawOnChartArea:false},beginAtZero:true,ticks:{font:{size:10},precision:0}}
+      }}
+  });
+}
+function renderClosedLoop(){
+  const pid=parseInt(document.getElementById('clPartner').value)||0;
+  const fromISO=document.getElementById('clFrom').value||null;
+  const toISO=document.getElementById('clTo').value||null;
+  const ptF=document.getElementById('clType').value;
+  const stF=document.getElementById('clStatus').value;
+  const q=document.getElementById('clSearch').value.trim().toLowerCase();
+
+  const rows=CLOSEDLOOP.filter(t=>{
+    if(!t.op_date) return false;
+    if(fromISO && t.op_date<fromISO) return false;
+    if(toISO && t.op_date>toISO) return false;
+    if(ptF && t.payment_type!==ptF) return false;
+    if(stF && t.status!==stF) return false;
+    const p=clPartnerByVoen(t.sender_voen);
+    if(pid>0 && p?.id!==pid) return false;
+    if(pid===-1 && p) return false;
+    if(q && ![t.sender_name,t.recipient_name,t.recipient_bank,t.tran_id,t.purpose,t.sender_voen,p?.name]
+         .some(v=>(v||'').toLowerCase().includes(q))) return false;
+    return true;
+  }).sort((a,b)=>(b.created_at||b.op_date||'').localeCompare(a.created_at||a.op_date||''));
+
+  const pObj=pid>0?partnersAny().find(p=>p.id===pid):null;
+  document.getElementById('clChartTitle').textContent=
+    `Gündəlik Əməliyyat Həcmi — ${pObj?pObj.name:pid===-1?'Tərəfdaşı müəyyən edilməyən':'Bütün Tərəfdaşlar'}`;
+
+  const vol=rows.reduce((s,t)=>s+t.amt,0), cnt=rows.length, avg=cnt?vol/cnt:0;
+  document.getElementById('clKpis').innerHTML=`
+    <div class="kpi-card"><div class="kpi-lbl"><i class="fa-solid fa-arrow-right-arrow-left"></i> Ümumi Həcm</div>
+      <div class="kpi-val" style="font-size:18px">₼ ${fmtN(vol,2)}</div>
+      <div class="kpi-sub">Seçilmiş dövr üçün</div></div>
+    <div class="kpi-card c-green"><div class="kpi-lbl"><i class="fa-solid fa-receipt"></i> Əməliyyat Sayı</div>
+      <div class="kpi-val">${fmtN(cnt)}</div><div class="kpi-sub">${stF?escapeHtml(stF):'Bütün statuslar'}</div></div>
+    <div class="kpi-card c-orange"><div class="kpi-lbl"><i class="fa-solid fa-calculator"></i> Ort. Əməliyyat</div>
+      <div class="kpi-val" style="font-size:18px">₼ ${fmtN(avg,2)}</div>
+      <div class="kpi-sub">Orta köçürmə məbləği</div></div>`;
+
+  renderClChart(rows, fromISO, toISO);
+
+  document.getElementById('clCount').textContent=`${fmtN(cnt)} əməliyyat`;
+  const dash='<span style="color:#94a3b8">—</span>';
+  const e=v=>v?escapeHtml(v):dash;
+  let html=`<thead><tr><th style="width:36px"></th><th>Tarix</th><th>Göndərən</th><th class="r">Məbləğ</th><th>Valyuta</th>
+    <th>Alan</th><th>Alan bank</th><th>Ödəniş növü</th><th class="r">Komissiya</th></tr></thead><tbody>`;
+  rows.forEach((t,i)=>{
+    const p=clPartnerByVoen(t.sender_voen);
+    const fee=(p && t.status==='SUCCESS') ? clFee(t, clActiveConfig(p.id)) : null;
+    const when=t.created_at ? new Date(t.created_at).toLocaleString('az-AZ',{timeZone:'Asia/Baku',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : fmtDate(t.op_date);
+    html+=`<tr>
+      <td><button class="cl-tgl" id="clTgl${i}" onclick="toggleClRow(${i})" title="Ətraflı">+</button></td>
+      <td style="font-size:12px;white-space:nowrap">${when}</td>
+      <td style="font-size:12px">${e(t.sender_name)}${p?`<div style="font-size:10px;color:#009688;font-weight:600">${escapeHtml(p.name)}</div>`:''}</td>
+      <td class="r"><strong>${fmtN(t.amt,2)}</strong></td>
+      <td style="font-size:12px">${e(t.currency)}</td>
+      <td style="font-size:12px">${e(t.recipient_name)}</td>
+      <td style="font-size:12px">${e(t.recipient_bank)}</td>
+      <td>${clPtBadge(t.payment_type)}</td>
+      <td class="r">${fee==null?dash:`<strong style="color:#6a1b9a">${fmtN(fee,2)}</strong>`}</td>
+    </tr>
+    <tr class="cl-detail" id="clDet${i}" hidden><td colspan="9"><div class="cl-detail-grid">
+      <div><div class="k">TRAN_ID</div><div class="v mono">${e(t.tran_id)}</div></div>
+      <div><div class="k">Təyinat</div><div class="v">${e(t.purpose)}</div></div>
+      <div><div class="k">Status</div><div class="v">${e(t.status)}</div></div>
+      <div><div class="k">Xəta səbəbi</div><div class="v">${e(t.error_reason)}</div></div>
+      <div><div class="k">Göndərənin VÖEN-i</div><div class="v mono">${e(t.sender_voen)}</div></div>
+      <div><div class="k">Alanın VÖEN-i</div><div class="v mono">${e(t.recipient_voen)}</div></div>
+      <div><div class="k">Tərəfdaş</div><div class="v">${p?escapeHtml(p.name):dash}</div></div>
+    </div></td></tr>`;
+  });
+  if(!rows.length) html+=`<tr><td colspan="9" style="color:#94a3b8;text-align:center;padding:18px">Məlumat yoxdur</td></tr>`;
+  document.getElementById('clTable').innerHTML=html+'</tbody>';
+}
+function toggleClRow(i){
+  const det=document.getElementById('clDet'+i), btn=document.getElementById('clTgl'+i);
+  det.hidden=!det.hidden;
+  btn.textContent=det.hidden?'+':'−';
+}
+
 // ═══════════════════════ USERS PAGE
 const ROLE_LABELS={administrator:'Administrator',manager:'Partner Manager',analyst:'Analyst',viewer:'Viewer'};
 function roleBadge(role){
@@ -5054,7 +5502,7 @@ let _fpCurrentPid = null;
 
 function openFeePackageForm(fpId=null, pid){
   if(!_requireEdit()) return;
-  _fpFormCtx={rulesId:'fpRulesContainer_edit',otId:'otContainer_edit',otStripId:'otTplStrip_edit',defaultPctId:'fpf_default_pct',defaultMinId:'fpf_default_min'};
+  _fpFormCtx={rulesId:'fpRulesContainer_edit',otId:'otContainer_edit',otStripId:'otTplStrip_edit',defaultPctId:'fpf_default_pct',defaultMinId:'fpf_default_min',clPrefix:'fpf'};
   _fpCurrentPid = pid;
   document.getElementById('fpf_pid').value = pid;
   document.getElementById('fpf_id').value  = fpId||'';
@@ -5072,6 +5520,7 @@ function openFeePackageForm(fpId=null, pid){
     document.getElementById('fpf_default_min').value=(cfg.default||{}).min_amt??'';
     renderFpRules(cfg.rules||[]);
     renderOtCommissions(cfg.one_time||[]);
+    setClFpFields('fpf', cfg.closed_loop);
   }else{
     ['fpf_name','fpf_from','fpf_to'].forEach(id=>setV(id,''));
     setV('fpf_status','active');
@@ -5079,6 +5528,7 @@ function openFeePackageForm(fpId=null, pid){
     document.getElementById('fpf_default_min').value='';
     renderFpRules([]);
     renderOtCommissions([]);
+    setClFpFields('fpf', null);
   }
   renderOtTemplateStrip();
   openModal('feePackageFormModal');
@@ -5089,7 +5539,7 @@ let _fpRuleCounter = 0;
 // Active commission-form context — switches between edit modal and unified form
 let _fpFormCtx = {
   rulesId:'fpRulesContainer', otId:'otContainer', otStripId:'otTplStrip',
-  defaultPctId:'upf_default_pct', defaultMinId:'upf_default_min',
+  defaultPctId:'upf_default_pct', defaultMinId:'upf_default_min', clPrefix:'upf',
 };
 
 // ── MCC tag-input helpers ────────────────────────────────────────────
@@ -5295,7 +5745,10 @@ function getFpConfig(){
     });
   });
   const one_time=getOtCommissions();
-  return{default:{pct,min_amt},rules,one_time};
+  const cfg={default:{pct,min_amt},rules,one_time};
+  const closed_loop=getClFpFields(_fpFormCtx.clPrefix);
+  if(closed_loop) cfg.closed_loop=closed_loop;
+  return cfg;
 }
 
 async function saveFeePackage(){
@@ -5568,10 +6021,11 @@ function calcFeeResult(pid){
   if(!fps.length){resEl.innerHTML='<span style="color:#e53935">Aktiv paket yoxdur</span>';return;}
   const config=fps[0].tiers;
   if(!config){resEl.textContent='';return;}
+  const clChip=clSummaryChip(pid);
   const pTxns=TRANSACTIONS.filter(t=>PROD_TYPE_MAP[t.prod_type]===pid);
   if(!pTxns.length){
     const dflt=config.default||{};
-    resEl.innerHTML=`<span style="color:#94a3b8;font-size:12px">Əməliyyat yoxdur · Standart: ${dflt.pct||0}% / min ${fmtMoney(dflt.min_amt||0)}</span>`;
+    resEl.innerHTML=`<span style="color:#94a3b8;font-size:12px">Əməliyyat yoxdur · Standart: ${dflt.pct||0}% / min ${fmtMoney(dflt.min_amt||0)}</span>${clChip}`;
     return;
   }
   const vol=pTxns.reduce((s,t)=>s+t.amt,0);
@@ -5591,7 +6045,7 @@ function calcFeeResult(pid){
     <button class="btn btn-outline btn-sm" style="border-color:#7b1fa2;color:#7b1fa2" onclick="openCalcInline(${pid})">
       <i class="fa-solid fa-table-list"></i> Aylıq Breakdown
     </button>
-  </div>`;
+  </div>${clChip}`;
 }
 
 // ═══════════════════════ DOCX GENERATION (template-driven)
@@ -6310,6 +6764,7 @@ function calcCommissionInline(pid){
       <i class="fa-solid fa-plus"></i> Bu məbləğlə Akt Yarat
     </button>`
   :`<div style="color:#94a3b8;text-align:center;padding:12px">Bu dövrdə əməliyyat tapılmadı.</div>`;
+  document.getElementById(`ciResult-${pid}`).insertAdjacentHTML('beforeend', clBreakdownHtml(pid, from, to));
 }
 
 function calcCommissionPreview(){
@@ -6965,6 +7420,18 @@ function openInvoiceForm(editId=null){
     return{pk,pname:p?.name||'—'};
   });
 
+  // Closed Loop commission for last month — only partners that had transfers
+  const clOptions=[];
+  {
+    const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-1);
+    const from=d.toISOString().slice(0,7)+'-01';
+    const to=clMonthEnd(from);
+    PARTNERS.forEach(p=>{
+      const line=clInvoiceLine(p.id, from, to);
+      if(line) clOptions.push({pid:p.id,pname:p.name,from,to,line});
+    });
+  }
+
   document.getElementById('invFormBody').innerHTML=`
     <input type="hidden" id="invf_edit_id" value="${editId||''}">
     <div class="form-section">Akt Məlumatı</div>
@@ -7005,7 +7472,7 @@ function openInvoiceForm(editId=null){
       <button class="btn btn-outline btn-sm" onclick="addInvLineItem()"><i class="fa-solid fa-plus"></i> Əl ilə əlavə et</button>
     </div>
 
-    ${otOptions.length||mfOptions.length?`
+    ${otOptions.length||mfOptions.length||clOptions.length?`
     <div style="background:#e8f5e9;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px">
       <div style="font-weight:700;color:#2e7d32;margin-bottom:8px"><i class="fa-solid fa-bolt"></i> Mövcud komissiyalardan əlavə et</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
@@ -7019,6 +7486,11 @@ function openInvoiceForm(editId=null){
             onclick="addInvLineFromMf(${i})">
             <i class="fa-solid fa-calendar-check"></i> ${m.pname}: Aylıq ödəniş — ${fmtMoney(m.pk.monthly_fee||0)}
           </button>`).join('')}
+        ${clOptions.map((c,i)=>`
+          <button class="btn btn-outline btn-sm" style="font-size:11px;border-color:#7b1fa2;color:#7b1fa2"
+            onclick="addInvLineFromCl(${i})">
+            <i class="fa-solid fa-arrows-rotate"></i> ${c.pname}: Closed Loop — ${clMonthLabel(c.from)} — ${fmtMoney(c.line.amount)}
+          </button>`).join('')}
       </div>
     </div>`:''}
 
@@ -7029,6 +7501,7 @@ function openInvoiceForm(editId=null){
   // Stash quick-add data for onclick handlers
   window._invOtOptions=otOptions;
   window._invMfOptions=mfOptions;
+  window._invClOptions=clOptions;
 
   // Pre-fill line items if editing
   if(inv) inv.line_items.forEach(li=>addInvLineItem(li));
