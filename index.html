@@ -331,8 +331,8 @@ tr.cl-detail:hover{background:#f8fafc}
 .cl-collapse-hdr{cursor:pointer;user-select:none;margin-bottom:0}
 .cl-collapse-hdr .cl-chev{margin-left:auto;color:#94a3b8;font-size:12px;transition:transform .15s}
 .cl-collapsed .cl-chev{transform:rotate(-90deg)}
-.cl-fp-grid{display:grid;grid-template-columns:110px 1fr 1fr;gap:8px 10px;align-items:center}
-@media(max-width:600px){.cl-fp-grid{grid-template-columns:1fr 1fr}.cl-fp-grid .cl-fp-lbl{grid-column:1/-1}}
+.cl-fp-grid{display:grid;grid-template-columns:110px 1fr 1fr 1fr;gap:8px 10px;align-items:center}
+@media(max-width:600px){.cl-fp-grid{grid-template-columns:1fr 1fr 1fr}.cl-fp-grid .cl-fp-lbl{grid-column:1/-1}}
 .cl-fp-grid .h{font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px}
 .cl-fp-preview{margin-top:10px;background:#f3e5f5;border-radius:8px;padding:8px 12px;font-size:12px;color:#4a148c}
 .txn-list-filter{background:#fff;border-radius:12px;padding:14px 18px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:18px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
@@ -1154,16 +1154,18 @@ tr.cl-detail:hover{background:#f8fafc}
 
       <!-- Closed Loop commission -->
       <div style="font-size:12px;font-weight:700;color:#334155;margin-top:18px;margin-bottom:6px"><i class="fa-solid fa-arrows-rotate" style="color:#7b1fa2;font-size:11px"></i> Closed Loop Komissiyası</div>
-      <div style="font-size:11px;color:#64748b;margin-bottom:8px"><i class="fa-solid fa-circle-info"></i> Hər köçürməyə ayrıca tətbiq olunur: məbləğ × faiz, amma minimumdan az olmamaqla. Boş saxlansa, komissiya hesablanmır.</div>
+      <div style="font-size:11px;color:#64748b;margin-bottom:8px"><i class="fa-solid fa-circle-info"></i> Hər köçürməyə ayrıca tətbiq olunur: məbləğ × faiz, minimumdan az və maksimumdan çox olmamaqla. Maksimum boşdursa — limit yoxdur. Hamısı boş saxlansa, komissiya hesablanmır.</div>
       <div class="fp-rule-card" oninput="clFpPreview('upf')">
         <div class="cl-fp-grid">
-          <div></div><div class="h">Faiz (%)</div><div class="h">Minimum (₼)</div>
+          <div></div><div class="h">Faiz (%)</div><div class="h">Minimum (₼)</div><div class="h">Maksimum (₼)</div>
           <div class="cl-fp-lbl"><span class="cl-pt cl-pt-int">INTERNAL</span></div>
           <input class="tier-inp" id="upf_cl_int_pct" type="number" min="0" max="100" step="0.01" placeholder="0.50">
           <input class="tier-inp" id="upf_cl_int_min" type="number" min="0" step="0.01" placeholder="0.00">
+          <input class="tier-inp" id="upf_cl_int_max" type="number" min="0" step="0.01" placeholder="limitsiz">
           <div class="cl-fp-lbl"><span class="cl-pt cl-pt-ext">EXTERNAL</span></div>
           <input class="tier-inp" id="upf_cl_ext_pct" type="number" min="0" max="100" step="0.01" placeholder="1.20">
           <input class="tier-inp" id="upf_cl_ext_min" type="number" min="0" step="0.01" placeholder="0.00">
+          <input class="tier-inp" id="upf_cl_ext_max" type="number" min="0" step="0.01" placeholder="limitsiz">
         </div>
         <div style="font-size:11px;color:#64748b;margin-top:8px">INTERNAL = Unibank daxili köçürmə · EXTERNAL = başqa banka köçürmə</div>
         <div class="cl-fp-preview" id="upf_cl_preview"></div>
@@ -1322,16 +1324,18 @@ tr.cl-detail:hover{background:#f8fafc}
 
       <!-- Closed Loop commission -->
       <div class="form-section" style="margin-top:20px"><i class="fa-solid fa-arrows-rotate" style="color:#7b1fa2;font-size:11px"></i> Closed Loop Komissiyası</div>
-      <div style="font-size:11px;color:#64748b;margin-bottom:8px"><i class="fa-solid fa-circle-info"></i> Hər köçürməyə ayrıca tətbiq olunur: məbləğ × faiz, amma minimumdan az olmamaqla. Boş saxlansa, komissiya hesablanmır.</div>
+      <div style="font-size:11px;color:#64748b;margin-bottom:8px"><i class="fa-solid fa-circle-info"></i> Hər köçürməyə ayrıca tətbiq olunur: məbləğ × faiz, minimumdan az və maksimumdan çox olmamaqla. Maksimum boşdursa — limit yoxdur. Hamısı boş saxlansa, komissiya hesablanmır.</div>
       <div class="fp-rule-card" oninput="clFpPreview('fpf')">
         <div class="cl-fp-grid">
-          <div></div><div class="h">Faiz (%)</div><div class="h">Minimum (₼)</div>
+          <div></div><div class="h">Faiz (%)</div><div class="h">Minimum (₼)</div><div class="h">Maksimum (₼)</div>
           <div class="cl-fp-lbl"><span class="cl-pt cl-pt-int">INTERNAL</span></div>
           <input class="tier-inp" id="fpf_cl_int_pct" type="number" min="0" max="100" step="0.01" placeholder="0.50">
           <input class="tier-inp" id="fpf_cl_int_min" type="number" min="0" step="0.01" placeholder="0.00">
+          <input class="tier-inp" id="fpf_cl_int_max" type="number" min="0" step="0.01" placeholder="limitsiz">
           <div class="cl-fp-lbl"><span class="cl-pt cl-pt-ext">EXTERNAL</span></div>
           <input class="tier-inp" id="fpf_cl_ext_pct" type="number" min="0" max="100" step="0.01" placeholder="1.20">
           <input class="tier-inp" id="fpf_cl_ext_min" type="number" min="0" step="0.01" placeholder="0.00">
+          <input class="tier-inp" id="fpf_cl_ext_max" type="number" min="0" step="0.01" placeholder="limitsiz">
         </div>
         <div style="font-size:11px;color:#64748b;margin-top:8px">INTERNAL = Unibank daxili köçürmə · EXTERNAL = başqa banka köçürmə</div>
         <div class="cl-fp-preview" id="fpf_cl_preview"></div>
@@ -4778,11 +4782,13 @@ function clActiveConfig(pid){
   return fp?.tiers?.closed_loop || null;
 }
 function clTypeKey(t){ return t.payment_type==='EXTERNAL' ? 'external' : 'internal'; }
-// Per transfer: max(amount × pct, min). null = no rate configured for this type.
+// Per transfer: amount × pct, floored at min, capped at max (if set).
+// null = no rate configured for this type.
 function clFee(t, cfg){
   const r=cfg?.[clTypeKey(t)];
-  if(!r || (r.pct==null && r.min_amt==null)) return null;
-  return Math.max(t.amt*(Number(r.pct)||0)/100, Number(r.min_amt)||0);
+  if(!r || (r.pct==null && r.min_amt==null && r.max_amt==null)) return null;
+  const fee=Math.max(t.amt*(Number(r.pct)||0)/100, Number(r.min_amt)||0);
+  return r.max_amt!=null ? Math.min(fee, Number(r.max_amt)) : fee;
 }
 // Charged transfers of a partner in [from,to]: SUCCESS only.
 function clTxnsFor(pid, from, to){
@@ -4823,16 +4829,21 @@ function clTypesIn(agg){
 // ── Fee package form ──
 function setClFpFields(prefix, cl){
   const set=(k,v)=>{const el=document.getElementById(`${prefix}_cl_${k}`); if(el) el.value=(v??'');};
-  set('int_pct',cl?.internal?.pct); set('int_min',cl?.internal?.min_amt);
-  set('ext_pct',cl?.external?.pct); set('ext_min',cl?.external?.min_amt);
+  set('int_pct',cl?.internal?.pct); set('int_min',cl?.internal?.min_amt); set('int_max',cl?.internal?.max_amt);
+  set('ext_pct',cl?.external?.pct); set('ext_min',cl?.external?.min_amt); set('ext_max',cl?.external?.max_amt);
   clFpPreview(prefix);
 }
 function getClFpFields(prefix){
   if(!prefix) return null;
   const g=k=>{const v=(document.getElementById(`${prefix}_cl_${k}`)?.value||'').trim(); return v===''?null:parseFloat(v);};
-  const part=(pct,min)=> (pct==null&&min==null) ? null : {pct:pct??0, min_amt:min??0};
-  const internal=part(g('int_pct'),g('int_min'));
-  const external=part(g('ext_pct'),g('ext_min'));
+  const part=(pct,min,max)=>{
+    if(pct==null&&min==null&&max==null) return null;
+    const r={pct:pct??0, min_amt:min??0};
+    if(max!=null) r.max_amt=max;
+    return r;
+  };
+  const internal=part(g('int_pct'),g('int_min'),g('int_max'));
+  const external=part(g('ext_pct'),g('ext_min'),g('ext_max'));
   if(!internal && !external) return null;
   const out={};
   if(internal) out.internal=internal;
@@ -4845,11 +4856,13 @@ function clFpPreview(prefix){
   const cfg=getClFpFields(prefix);
   if(!cfg){ el.innerHTML='Closed Loop komissiyası təyin edilməyib.'; return; }
   const ex=(pt,amt)=>{ const f=clFee({payment_type:pt,amt},cfg); return f==null?null:`${fmtN(amt,0)} ₼ ${pt} → ${fmtMoney(f)}`; };
-  el.innerHTML='<b>Nümunə:</b> '+[ex('INTERNAL',100),ex('INTERNAL',50),ex('EXTERNAL',500)].filter(Boolean).join(' &nbsp;·&nbsp; ');
+  const bad=['internal','external'].filter(k=>cfg[k]?.max_amt!=null && cfg[k].max_amt<cfg[k].min_amt);
+  el.innerHTML='<b>Nümunə:</b> '+[ex('INTERNAL',50),ex('INTERNAL',1000),ex('EXTERNAL',500),ex('EXTERNAL',10000)].filter(Boolean).join(' &nbsp;·&nbsp; ')
+    +(bad.length?`<div style="color:#c62828;margin-top:4px"><i class="fa-solid fa-triangle-exclamation"></i> Maksimum minimumdan kiçikdir (${bad.map(k=>k.toUpperCase()).join(', ')}) — maksimum tətbiq olunacaq.</div>`:'');
 }
 function clConfigLine(cl){
   if(!cl || (!cl.internal && !cl.external)) return '';
-  const part=(lbl,r)=>r?`${lbl} ${r.pct||0}% / min ${fmtMoney(r.min_amt||0)}`:null;
+  const part=(lbl,r)=>r?`${lbl} ${r.pct||0}% / min ${fmtMoney(r.min_amt||0)}${r.max_amt!=null?` / maks ${fmtMoney(r.max_amt)}`:''}`:null;
   return `<div style="margin-top:6px;font-size:12px;color:#334155"><i class="fa-solid fa-arrows-rotate" style="color:#7b1fa2;font-size:10px"></i>
     <strong>Closed Loop:</strong> ${[part('INTERNAL',cl.internal),part('EXTERNAL',cl.external)].filter(Boolean).join(' · ')}</div>`;
 }
