@@ -1872,11 +1872,25 @@ function currentApplicableTier(partnerId){
          totalTiers:rulesCount,tierNo:1,tier:config.default,periodStart:startISO};
 }
 
+// A fee package with Closed Loop rates and no card commission at all
+// (0% / 0 min standard, no rules). The card dashboard ignores these, and a
+// partner whose only active packages are like this is not a card partner.
+function isClOnlyFp(fp){
+  const t=fp?.tiers||{};
+  const cl=t.closed_loop;
+  return !!(cl && (cl.internal||cl.external)) &&
+    !Number(t.default?.pct) && !Number(t.default?.min_amt) && !(t.rules||[]).length;
+}
+function isClOnlyPartner(pid){
+  const act=(FEE_PACKAGES[pid]||[]).filter(fp=>fp.status==='active');
+  return act.length>0 && act.every(isClOnlyFp);
+}
+
 function buildFeeStats(fromISO, toISO, partnerId=0){
-  const allFps=Object.values(FEE_PACKAGES).flat().filter(fp=>!partnerId||fp.partner_id===partnerId);
+  const allFps=Object.values(FEE_PACKAGES).flat().filter(fp=>(!partnerId||fp.partner_id===partnerId)&&!isClOnlyFp(fp));
   const activeFps=allFps.filter(fp=>fp.status==='active');
   const pidsWithFp=new Set(activeFps.map(fp=>fp.partner_id));
-  const activePartners=PARTNERS.filter(p=>p.status==='active'&&(!partnerId||p.id===partnerId));
+  const activePartners=PARTNERS.filter(p=>p.status==='active'&&(!partnerId||p.id===partnerId)&&!isClOnlyPartner(p.id));
   const partnersWithout=activePartners.filter(p=>!pidsWithFp.has(p.id));
   // Resolve period (same logic as buildSummary)
   let effectiveFrom = fromISO;
@@ -3105,7 +3119,7 @@ function renderDashboard(){
     <div class="kpi-card" style="border-color:#2e7d32">
       <div class="kpi-lbl"><i class="fa-solid fa-handshake"></i> Komisyon Sazişi Olan</div>
       <div class="kpi-val" style="color:#2e7d32">${fs.pidsWithFp.size}</div>
-      <div class="kpi-sub">${PARTNERS.filter(p=>p.status==='active').length} aktiv tərəfdaşdan</div></div>
+      <div class="kpi-sub">${PARTNERS.filter(p=>p.status==='active'&&!isClOnlyPartner(p.id)).length} aktiv tərəfdaşdan</div></div>
     <div class="kpi-card" style="border-color:${fs.partnersWithout.length>0?'#e53935':'#43a047'}">
       <div class="kpi-lbl"><i class="fa-solid fa-circle-exclamation"></i> Sazişsiz Aktiv Tərəfdaş</div>
       <div class="kpi-val" style="color:${fs.partnersWithout.length>0?'#e53935':'#43a047'}">${fs.partnersWithout.length}</div>
@@ -3125,7 +3139,7 @@ function renderDashboard(){
 
   // Fee packages table — filter by partner when active
   const allFps=Object.values(FEE_PACKAGES).flat().filter(fp=>
-    fp.status==='active' && (!DASH_PARTNER_FILTER||fp.partner_id===DASH_PARTNER_FILTER));
+    fp.status==='active' && !isClOnlyFp(fp) && (!DASH_PARTNER_FILTER||fp.partner_id===DASH_PARTNER_FILTER));
   let ftHtml=`<thead><tr>
     <th>Tərəfdaş</th><th>Paket Adı</th><th>Müddət</th>
     <th class="r">Standart %</th><th class="r">Qaydalar</th>
@@ -3177,7 +3191,7 @@ function renderDashboard(){
     <th class="r">Ortalama Dərəcə</th>
     <th class="r">Təxmini Komisyon</th><th class="r">Effektiv (faktiki) komissiya</th>
   </tr></thead><tbody>`;
-  const activePartnersF=PARTNERS.filter(p=>p.status==='active'&&(!DASH_PARTNER_FILTER||p.id===DASH_PARTNER_FILTER));
+  const activePartnersF=PARTNERS.filter(p=>p.status==='active'&&!isClOnlyPartner(p.id)&&(!DASH_PARTNER_FILTER||p.id===DASH_PARTNER_FILTER));
   let grandTotal=0;
   activePartnersF.forEach(p=>{
     const vol=sum2[p.id]?.vol||0;
@@ -3228,7 +3242,7 @@ function renderDashboard(){
   // Fee rate bar chart
   destroyChart(feeRateChart);
   const fpLabels=[];const fpDatasets=[];
-  const activeFpsForChart=PARTNERS.filter(p=>!DASH_PARTNER_FILTER||p.id===DASH_PARTNER_FILTER).map(p=>{
+  const activeFpsForChart=PARTNERS.filter(p=>(!DASH_PARTNER_FILTER||p.id===DASH_PARTNER_FILTER)&&!isClOnlyPartner(p.id)).map(p=>{
     const fp=(FEE_PACKAGES[p.id]||[]).find(x=>x.status==='active');
     const cfg=fp?fp.tiers:null;
     if(!cfg) return null;
@@ -3826,11 +3840,14 @@ async function saveUnifiedPackage(){
   const sizeRaw=document.getElementById('upf_size').value;
   const size=parseInt(sizeRaw)||0;
   const pricePerCard=parseFloat(document.getElementById('upf_price_per_card').value)||null;
-  const fpName=document.getElementById('upf_fp_name').value.trim();
+  let fpName=document.getElementById('upf_fp_name').value.trim();
+  // A Closed Loop–only partner has no card package; don't make them invent a
+  // commission package name just to save the Closed Loop rates.
+  if(!fpName && getClFpFields('upf')) fpName='Closed Loop';
 
   if(!pid||!from||!to){showToast('Tərəfdaş və tarix aralığı məcburidir!',false);return;}
   if(to<=from){showToast('Bitmə tarixi başlama tarixindən böyük olmalıdır!',false);return;}
-  if(!size&&!fpName){showToast('Kart sayı VƏ ya komisyon paketi adından ən azı biri doldurulmalıdır!',false);return;}
+  if(!size&&!fpName){showToast('Kart sayı, komisyon paketi adı və ya Closed Loop komissiyasından ən azı biri doldurulmalıdır!',false);return;}
 
   const mfOn=document.getElementById('upf_mf_on').checked;
   const monthly_fee=mfOn?(parseFloat(document.getElementById('upf_mf_amount').value)||null):null;
